@@ -5,7 +5,8 @@ export interface Activity {
   startTime: string;
   endTime: string;
   location: string;
-  contact: string;
+  contact?: string;
+  website?: string;
   notes?: string;
   notesDates?: Record<string, string>; // Maps date strings to notes for specific dates
 }

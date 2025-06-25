@@ -17,6 +17,15 @@ interface DaySectionProps {
   formatTime: (time: string) => string;
   onDateSelectionChange?: (activityId: string, dates: string[], isAdding: boolean, notes?: Record<string, string>) => void;
   onDateNoteChange?: (activityId: string, dates: string[], notes: Record<string, string>) => void;
+  // Global pagination props
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+  onNextPage: () => void;
+  onPrevPage: () => void;
+  onFirstPage: () => void;
+  onLastPage: () => void;
+  getCurrentPageRange: () => string;
 }
 
 export default function DaySection({
@@ -29,7 +38,16 @@ export default function DaySection({
   getActivityColor,
   formatTime,
   onDateSelectionChange,
-  onDateNoteChange
+  onDateNoteChange,
+  // Global pagination props
+  currentPage,
+  totalPages,
+  onPageChange,
+  onNextPage,
+  onPrevPage,
+  onFirstPage,
+  onLastPage,
+  getCurrentPageRange
 }: DaySectionProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState<{ activityId: string; dateIndex: number } | null>(null);
@@ -69,6 +87,38 @@ export default function DaySection({
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  };
+
+  // Helper function to get activity status
+  const getActivityStatus = (activity: Activity) => {
+    if (activity.dates.length === 0) return null;
+    
+    // Get the date range of the current page
+    const currentPageDateStrings = dates.map(date => getDateString(date));
+    const firstPageDate = currentPageDateStrings[0];
+    const lastPageDate = currentPageDateStrings[currentPageDateStrings.length - 1];
+    
+    // Check if any activity dates fall within the current page range
+    const hasDatesInCurrentRange = activity.dates.some(date => 
+      date >= firstPageDate && date <= lastPageDate
+    );
+    
+    if (hasDatesInCurrentRange) {
+      return null; // Activity is active in current range
+    }
+    
+    // If no dates in current range, check if activity is before or after
+    const sortedDates = [...activity.dates].sort();
+    const firstActivityDate = sortedDates[0];
+    const lastActivityDate = sortedDates[sortedDates.length - 1];
+    
+    if (lastActivityDate < firstPageDate) {
+      return { status: 'ended', color: 'text-gray-500' };
+    } else if (firstActivityDate > lastPageDate) {
+      return { status: 'not started', color: 'text-blue-600' };
+    }
+    
+    return null;
   };
 
   // Check if an activity has conflicts on a specific date
@@ -273,84 +323,146 @@ export default function DaySection({
   return (
     <div className="mb-12" ref={containerRef}>
       <h2 className={`text-2xl font-bold ${color} mb-4 text-left`}>{title}</h2>
+      
+      {/* Pagination Controls - only show if this is the first section */}
+      {title === 'Monday' && (
+        <div className="flex items-center justify-between mb-4 bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={onFirstPage}
+              disabled={currentPage === 0}
+              className="px-3 py-1 text-sm bg-neutral-100 text-neutral-700 rounded-md hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              First
+            </button>
+            <button
+              onClick={onPrevPage}
+              disabled={currentPage === 0}
+              className="px-3 py-1 text-sm bg-neutral-100 text-neutral-700 rounded-md hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Previous
+            </button>
+          </div>
+          
+          <div className="text-center">
+            <div className="text-sm font-medium text-neutral-700">
+              {getCurrentPageRange()}
+            </div>
+            <div className="text-xs text-neutral-500">
+              Page {currentPage + 1} of {totalPages}
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={onNextPage}
+              disabled={currentPage === totalPages - 1}
+              className="px-3 py-1 text-sm bg-neutral-100 text-neutral-700 rounded-md hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Next
+            </button>
+            <button
+              onClick={onLastPage}
+              disabled={currentPage === totalPages - 1}
+              className="px-3 py-1 text-sm bg-neutral-100 text-neutral-700 rounded-md hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Last
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white rounded-lg shadow-lg overflow-hidden border border-neutral-200">
-        {/* Fixed columns container */}
+        {/* Header row */}
         <div className="flex">
-          {/* Fixed Activity and Time columns */}
+          {/* Fixed Activity and Time columns header */}
           <div className="flex-shrink-0 w-[320px] border-r border-neutral-200">
-            {/* Header for fixed columns */}
             <div className="grid grid-cols-2 gap-1 p-4 bg-neutral-100 border-b border-neutral-200 font-semibold text-sm">
               <div className="text-neutral-700">Activity</div>
               <div className="text-neutral-700">Time</div>
             </div>
-            
-            {/* Activity rows for fixed columns */}
-            {activities.map((activity, idx) => (
-              <div key={activity.id} className="grid grid-cols-2 gap-1 p-4 border-b border-neutral-200 last:border-b-0 hover:bg-neutral-50 transition-colors">
-                <div 
-                  className="font-medium text-neutral-900 flex items-center cursor-pointer h-8"
-                  onClick={() => onToggleActivity(activity.id)}
-                >
-                  {activity.name}
-                  <svg 
-                    className={`w-4 h-4 ml-2 transition-transform ${
-                      expandedActivities.has(activity.id) ? 'rotate-180' : ''
-                    }`} 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
-                <div className="text-neutral-700 text-sm flex items-center h-8">
-                  {formatTime(activity.startTime)} - {formatTime(activity.endTime)}
-                </div>
-              </div>
-            ))}
           </div>
 
-          {/* Scrollable date columns */}
-          <div className="flex-1 overflow-x-auto">
-            <div className="min-w-max">
-              {/* Header for date columns */}
-              <div className="grid gap-1 p-4 bg-neutral-100 border-b border-neutral-200 font-semibold text-sm" style={{ gridTemplateColumns: `repeat(${dates.length}, 80px)` }}>
-                {dates.map((date, idx) => {
-                  const dateStr = getDateString(date);
-                  const month = date.getMonth();
-                  
-                  // Different background colors for each month
-                  const getMonthColor = (month: number) => {
-                    switch (month) {
-                      case 0: return 'bg-pastel-blue'; // January
-                      case 1: return 'bg-pastel-purple'; // February
-                      case 2: return 'bg-pastel-green'; // March
-                      case 3: return 'bg-pastel-yellow'; // April
-                      case 4: return 'bg-pastel-pink'; // May
-                      case 5: return 'bg-pastel-orange'; // June
-                      case 6: return 'bg-pastel-red'; // July
-                      case 7: return 'bg-pastel-blue'; // August
-                      case 8: return 'bg-pastel-purple'; // September
-                      case 9: return 'bg-pastel-green'; // October
-                      case 10: return 'bg-pastel-yellow'; // November
-                      case 11: return 'bg-pastel-pink'; // December
-                      default: return 'bg-neutral-100';
-                    }
-                  };
-                  
-                  return (
-                    <div key={idx} className={`text-center ${getMonthColor(month)}/30 rounded`}>
-                      <div className="opacity-75">
-                        {dateStr}
-                      </div>
-                    </div>
-                  );
-                })}
+          {/* Date columns header */}
+          <div className="flex-1">
+            <div className="grid gap-1 p-4 bg-neutral-100 border-b border-neutral-200 font-semibold text-sm" style={{ gridTemplateColumns: `repeat(${dates.length}, 1fr)` }}>
+              {dates.map((date, idx) => {
+                const dateStr = getDateString(date);
+                const month = date.getMonth();
+                // Different background colors for each month
+                const getMonthColor = (month: number) => {
+                  switch (month) {
+                    case 0: return 'bg-pastel-blue'; // January
+                    case 1: return 'bg-pastel-purple'; // February
+                    case 2: return 'bg-pastel-green'; // March
+                    case 3: return 'bg-pastel-yellow'; // April
+                    case 4: return 'bg-pastel-pink'; // May
+                    case 5: return 'bg-pastel-orange'; // June
+                    case 6: return 'bg-pastel-red'; // July
+                    case 7: return 'bg-pastel-blue'; // August
+                    case 8: return 'bg-pastel-purple'; // September
+                    case 9: return 'bg-pastel-green'; // October
+                    case 10: return 'bg-pastel-yellow'; // November
+                    case 11: return 'bg-pastel-pink'; // December
+                    default: return 'bg-neutral-100';
+                  }
+                };
+                return (
+                  <div key={idx} className={`text-center ${getMonthColor(month)}/30 rounded flex flex-col items-center justify-center`}>
+                      {date.toLocaleDateString('en-US')}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Activity rows with inline expanded details */}
+        {activities.map((activity, activityIdx) => (
+          <div key={activity.id}>
+            {/* Activity row */}
+            <div className="flex border-b border-neutral-200 hover:bg-neutral-50 transition-colors">
+              {/* Fixed Activity and Time columns */}
+              <div className="flex-shrink-0 w-[320px] border-r border-neutral-200">
+                <div className="grid grid-cols-2 gap-1 p-4">
+                  <div 
+                    className={`font-medium text-neutral-900 flex items-center cursor-pointer h-8 pl-2 mr-2 ${getActivityColor(activity.id)}`}
+                    onClick={() => onToggleActivity(activity.id)}
+                  >
+                      {activity.name}
+                    <svg 
+                      className={`w-4 h-4 ml-2 transition-transform ${
+                        expandedActivities.has(activity.id) ? 'rotate-180' : ''
+                      }`} 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+
+
+                    {(() => {
+                      const status = getActivityStatus(activity);
+                      if (status) {
+                        return (
+                          <span className={`ml-2 text-[10px] font-normal ${status.color}`}>
+                            ({status.status})
+                          </span>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </div>
+                  <div className="text-neutral-700 text-sm flex items-center h-8">
+                    {formatTime(activity.startTime)} - {formatTime(activity.endTime)}
+                  </div>
+                </div>
               </div>
-              
-              {/* Date cells for each activity */}
-              {activities.map((activity, idx) => (
-                <div key={activity.id} className="grid gap-1 p-4 border-b border-neutral-200 last:border-b-0 hover:bg-neutral-50 transition-colors" style={{ gridTemplateColumns: `repeat(${dates.length}, 80px)` }}>
+
+              {/* Date cells */}
+              <div className="flex-1">
+                <div className="grid gap-1 p-4" style={{ gridTemplateColumns: `repeat(${dates.length}, 1fr)` }}>
                   {dates.map((date, dateIdx) => {
                     const dateStr = getDateString(date);
                     const isActive = activity.dates.includes(dateStr);
@@ -410,16 +522,16 @@ export default function DaySection({
                     );
                   })}
                 </div>
-              ))}
+              </div>
             </div>
-          </div>
-        </div>
 
-        {/* Accordion Details - rendered separately to avoid layout issues */}
-        {activities.map((activity) => (
-          expandedActivities.has(activity.id) && (
-            <ActivityDetails key={`details-${activity.id}`} activity={activity} />
-          )
+            {/* Expanded Activity Details - spans full width */}
+            {expandedActivities.has(activity.id) && (
+              <div className="border-b border-neutral-200">
+                <ActivityDetails activity={activity} />
+              </div>
+            )}
+          </div>
         ))}
       </div>
 

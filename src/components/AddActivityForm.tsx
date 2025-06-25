@@ -4,8 +4,18 @@ import { useState } from 'react';
 import { Activity } from '@/types/activity';
 
 interface AddActivityFormProps {
-  onAddActivity: (activity: Activity) => void;
+  onAddActivity: (activity: Omit<Activity, 'id'>) => void;
+  activities: Activity[];
   weeks: { 
+    monday: Date; 
+    tuesday: Date; 
+    wednesday: Date; 
+    thursday: Date; 
+    friday: Date; 
+    saturday: Date; 
+    sunday: Date; 
+  }[];
+  currentPageWeeks: { 
     monday: Date; 
     tuesday: Date; 
     wednesday: Date; 
@@ -16,43 +26,34 @@ interface AddActivityFormProps {
   }[];
 }
 
-export default function AddActivityForm({ onAddActivity, weeks }: AddActivityFormProps) {
+export default function AddActivityForm({ onAddActivity, activities, weeks, currentPageWeeks }: AddActivityFormProps) {
   const [formData, setFormData] = useState({
     name: '',
-    selectedDays: [] as ('monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday')[],
+    startDate: '',
+    endDate: '',
     startTime: '',
     endTime: '',
     location: '',
-    contact: '',
-    notes: '',
-    weeksSpan: 1,
-    selectedDates: [] as string[]
+    website: '',
+    notes: ''
   });
 
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const dayOptions = [
-    { value: 'monday', label: 'Monday' },
-    { value: 'tuesday', label: 'Tuesday' },
-    { value: 'wednesday', label: 'Wednesday' },
-    { value: 'thursday', label: 'Thursday' },
-    { value: 'friday', label: 'Friday' },
-    { value: 'saturday', label: 'Saturday' },
-    { value: 'sunday', label: 'Sunday' }
-  ];
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Generate dates for every week on the same day between start and end date
+    const dates = generateWeeklyDates(formData.startDate, formData.endDate);
+    
     // Create new activity
-    const newActivity: Activity = {
-      id: Date.now().toString(), // Simple ID generation
+    const newActivity: Omit<Activity, 'id'> = {
       name: formData.name,
-      dates: formData.selectedDates,
+      dates: dates,
       startTime: formData.startTime,
       endTime: formData.endTime,
       location: formData.location,
-      contact: formData.contact,
+      website: formData.website,
       notes: formData.notes
     };
     
@@ -61,14 +62,13 @@ export default function AddActivityForm({ onAddActivity, weeks }: AddActivityFor
     // Reset form
     setFormData({
       name: '',
-      selectedDays: [],
+      startDate: '',
+      endDate: '',
       startTime: '',
       endTime: '',
       location: '',
-      contact: '',
-      notes: '',
-      weeksSpan: 1,
-      selectedDates: []
+      website: '',
+      notes: ''
     });
     setIsExpanded(false);
   };
@@ -77,89 +77,131 @@ export default function AddActivityForm({ onAddActivity, weeks }: AddActivityFor
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'weeksSpan' ? parseInt(value) : value
+      [name]: value
     }));
   };
 
-  const handleDayToggle = (day: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday') => {
-    setFormData(prev => ({
-      ...prev,
-      selectedDays: prev.selectedDays.includes(day)
-        ? prev.selectedDays.filter(d => d !== day)
-        : [...prev.selectedDays, day]
-    }));
+  // Generate dates for every week on the same day between start and end date
+  const generateWeeklyDates = (startDate: string, endDate: string): string[] => {
+    if (!startDate) return [];
+    
+    // Create dates in local timezone by parsing the date string properly
+    const [startYear, startMonth, startDay] = startDate.split('-').map(Number);
+    const start = new Date(startYear, startMonth - 1, startDay); // month is 0-indexed
+    
+    let end: Date;
+    if (endDate) {
+      const [endYear, endMonth, endDay] = endDate.split('-').map(Number);
+      end = new Date(endYear, endMonth - 1, endDay);
+    } else {
+      end = start;
+    }
+    
+    const dates: string[] = [];
+    const currentDate = new Date(start);
+    
+    while (currentDate <= end) {
+      // Format date as YYYY-MM-DD in local timezone
+      const year = currentDate.getFullYear();
+      const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+      const day = String(currentDate.getDate()).padStart(2, '0');
+      dates.push(`${year}-${month}-${day}`);
+      
+      currentDate.setDate(currentDate.getDate() + 7); // Add 7 days (1 week)
+    }
+    
+    return dates;
   };
 
-  const handleDateToggle = (date: string) => {
-    setFormData(prev => ({
-      ...prev,
-      selectedDates: prev.selectedDates.includes(date)
-        ? prev.selectedDates.filter(d => d !== date)
-        : [...prev.selectedDates, date]
-    }));
-  };
-
-  const handleSelectAllDates = () => {
-    const allDates = getAvailableDates();
-    const dateStrings = allDates.map(dateInfo => dateInfo.date.toISOString().slice(0, 10));
-    setFormData(prev => ({
-      ...prev,
-      selectedDates: dateStrings
-    }));
-  };
-
-  const handleClearAllDates = () => {
-    setFormData(prev => ({
-      ...prev,
-      selectedDates: []
-    }));
-  };
-
-  const formatWeekendDate = (date: Date) => {
+  const formatDate = (date: Date) => {
     return date.toLocaleDateString('en-US', {
       month: 'short',
-      day: 'numeric'
+      day: 'numeric',
+      year: 'numeric'
     });
   };
 
-  // Get available dates for all selected days of the week from the weeks data, limited by weeksSpan
-  const getAvailableDates = () => {
-    if (weeks.length === 0 || formData.selectedDays.length === 0) return [];
-    
-    const allDates: { date: Date; day: string; weekIndex: number }[] = [];
-    
-    // Limit to the specified number of weeks
-    const weeksToShow = Math.min(formData.weeksSpan, weeks.length);
-    
-    for (let weekIndex = 0; weekIndex < weeksToShow; weekIndex++) {
-      const week = weeks[weekIndex];
-      formData.selectedDays.forEach(day => {
-        const date = week[day as keyof typeof week] as Date;
-        allDates.push({ 
-          date, 
-          day: dayOptions.find(d => d.value === day)?.label || day,
-          weekIndex: weekIndex + 1
-        });
-      });
-    }
-    
-    // Sort by date
-    return allDates.sort((a, b) => a.date.getTime() - b.date.getTime());
+  const isEndDateValid = !formData.endDate || new Date(formData.endDate) >= new Date(formData.startDate);
+  const generatedDates = generateWeeklyDates(formData.startDate, formData.endDate);
+  
+  // Get day of week in local timezone
+  const getDayOfWeek = (dateString: string): string => {
+    if (!dateString) return '';
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    return date.toLocaleDateString('en-US', { weekday: 'long' });
+  };
+  
+  const dayOfWeek = getDayOfWeek(formData.startDate);
+
+  const getLocalDate = (dateString: string): Date => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day);
   };
 
-  const availableDates = getAvailableDates();
+  // Helper function to get date string in local timezone
+  const getDateString = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Detect free weekends for the current page range
+  const getFreeWeekends = () => {
+    const freeDays: { day: string; date: string }[] = [];
+    
+    currentPageWeeks.forEach(week => {
+      const saturdayStr = getDateString(week.saturday);
+      const sundayStr = getDateString(week.sunday);
+      
+      // Check if there are any activities on Saturday or Sunday
+      const hasSaturdayActivity = activities.some(activity => 
+        activity.dates.includes(saturdayStr)
+      );
+      const hasSundayActivity = activities.some(activity => 
+        activity.dates.includes(sundayStr)
+      );
+      
+      // If Saturday has no activities, add it to free days
+      if (!hasSaturdayActivity) {
+        freeDays.push({ day: 'Sat', date: formatDate(week.saturday) });
+      }
+      
+      // If Sunday has no activities, add it to free days
+      if (!hasSundayActivity) {
+        freeDays.push({ day: 'Sun', date: formatDate(week.sunday) });
+      }
+    });
+    
+    return freeDays;
+  };
+
+  const freeWeekends = getFreeWeekends();
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-xl font-semibold text-gray-800">Add New Activity</h3>
+        <div>
+          <div className="text-sm font-medium text-gray-700 mb-2">Free weekend days in current range:</div>
+          {freeWeekends.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {freeWeekends.map((day, index) => (
+                <span key={index} className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                  {day.day} {day.date}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <div className="text-xs text-gray-500">No free weekend days in current range</div>
+          )}
+        </div>
+
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
           {isExpanded ? 'Cancel' : 'Add Activity'}
         </button>
-      </div>
 
       {isExpanded && (
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -181,21 +223,33 @@ export default function AddActivityForm({ onAddActivity, weeks }: AddActivityFor
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Weeks Duration *
+                Start Date *
               </label>
-              <select
-                name="weeksSpan"
-                value={formData.weeksSpan}
+              <input
+                type="date"
+                name="startDate"
+                value={formData.startDate}
                 onChange={handleChange}
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {Array.from({ length: Math.min(12, weeks.length) }, (_, i) => i + 1).map(num => (
-                  <option key={num} value={num}>
-                    {num} {num === 1 ? 'week' : 'weeks'}
-                  </option>
-                ))}
-              </select>
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                End Date (Optional)
+              </label>
+              <input
+                type="date"
+                name="endDate"
+                value={formData.endDate}
+                onChange={handleChange}
+                min={formData.startDate}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {!isEndDateValid && (
+                <p className="text-red-500 text-sm mt-1">End date must be after start date</p>
+              )}
             </div>
 
             <div>
@@ -228,14 +282,13 @@ export default function AddActivityForm({ onAddActivity, weeks }: AddActivityFor
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Location *
+                Location
               </label>
               <input
                 type="text"
                 name="location"
                 value={formData.location}
                 onChange={handleChange}
-                required
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="e.g., Community Park"
               />
@@ -243,16 +296,15 @@ export default function AddActivityForm({ onAddActivity, weeks }: AddActivityFor
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Contact *
+                Website
               </label>
               <input
                 type="text"
-                name="contact"
-                value={formData.contact}
+                name="website"
+                value={formData.website}
                 onChange={handleChange}
-                required
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="e.g., Coach Mike (555-0123)"
+                placeholder="e.g., https://example.com"
               />
             </div>
           </div>
@@ -271,89 +323,37 @@ export default function AddActivityForm({ onAddActivity, weeks }: AddActivityFor
             />
           </div>
 
-          {/* Day of Week Selection */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
-              Select Days of Week *
-            </label>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
-              {dayOptions.map(option => {
-                const isSelected = formData.selectedDays.includes(option.value as any);
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => handleDayToggle(option.value as any)}
-                    className={`p-3 border rounded-lg text-sm font-medium transition-colors ${
-                      isSelected
-                        ? 'bg-blue-500 text-white border-blue-500'
-                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                );
-              })}
-            </div>
-            {formData.selectedDays.length === 0 && (
-              <p className="text-red-500 text-sm mt-1">Please select at least one day of the week</p>
-            )}
-          </div>
-
-          {/* Date Selection */}
-          {formData.selectedDays.length > 0 && (
-            <div>
-              <div className="flex justify-between items-center mb-3">
-                <label className="block text-sm font-medium text-gray-700">
-                  Select Specific Dates *
-                </label>
-                <div className="flex space-x-2">
-                  <button
-                    type="button"
-                    onClick={handleSelectAllDates}
-                    className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors"
-                  >
-                    Select All
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleClearAllDates}
-                    className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
-                  >
-                    Clear All
-                  </button>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                {availableDates.map((dateInfo, idx) => {
-                  const dateStr = dateInfo.date.toISOString().slice(0, 10);
-                  const isSelected = formData.selectedDates.includes(dateStr);
-                  
-                  return (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => handleDateToggle(dateStr)}
-                      className={`p-3 border rounded-lg text-sm font-medium transition-colors ${
-                        isSelected
-                          ? 'bg-blue-500 text-white border-blue-500'
-                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      <div>{formatWeekendDate(dateInfo.date)}</div>
-                      <div className="text-xs opacity-75">{dateInfo.day}</div>
-                      <div className="text-xs opacity-50">Week {dateInfo.weekIndex}</div>
-                    </button>
-                  );
-                })}
-              </div>
-              {formData.selectedDates.length === 0 && (
-                <p className="text-red-500 text-sm mt-1">Please select at least one date</p>
-              )}
-              <p className="text-xs text-gray-500 mt-2">
-                Showing dates for {formData.weeksSpan} {formData.weeksSpan === 1 ? 'week' : 'weeks'} 
-                ({availableDates.length} total dates available)
+          {/* Schedule Preview */}
+          {formData.startDate && isEndDateValid && generatedDates.length > 0 && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h4 className="text-sm font-medium text-blue-800 mb-2">Schedule Preview</h4>
+              <p className="text-sm text-blue-700 mb-2">
+                This activity will be scheduled every <span className="font-medium">{dayOfWeek}</span>
+                {formData.endDate && formData.endDate !== formData.startDate 
+                  ? ` from ${formatDate(getLocalDate(formData.startDate))} to ${formatDate(getLocalDate(formData.endDate))}`
+                  : ` starting ${formatDate(getLocalDate(formData.startDate))}`
+                }
               </p>
+              <p className="text-sm text-blue-600">
+                Total sessions: <span className="font-medium">{generatedDates.length}</span>
+              </p>
+              {generatedDates.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-xs text-blue-600 mb-2">First few dates:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {generatedDates.slice(0, 5).map((date, idx) => (
+                      <span key={idx} className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                        {formatDate(getLocalDate(date))}
+                      </span>
+                    ))}
+                    {generatedDates.length > 5 && (
+                      <span className="text-xs text-blue-600 px-2 py-1">
+                        +{generatedDates.length - 5} more
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -367,7 +367,7 @@ export default function AddActivityForm({ onAddActivity, weeks }: AddActivityFor
             </button>
             <button
               type="submit"
-              disabled={formData.selectedDays.length === 0 || formData.selectedDates.length === 0}
+              disabled={!formData.startDate || !isEndDateValid || generatedDates.length === 0}
               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
             >
               Add Activity

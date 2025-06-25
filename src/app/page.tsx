@@ -6,6 +6,7 @@ import { getWeekendDates, hasTimeConflict } from '@/utils/dateUtils';
 import DaySection from '@/components/WeekendSection';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import AddActivityForm from '@/components/AddActivityForm';
+import { activityService } from '@/services/activityService';
 
 // Helper function to get date string in local timezone
 const getDateString = (date: Date) => {
@@ -68,15 +69,32 @@ function getAllDatesFromActivities(activities: Activity[]) {
   return Array.from(weeks.values()).sort((a, b) => a.monday.getTime() - b.monday.getTime());
 }
 
-// Color palette for activities - using pastel rainbow colors
+// Color palette for activities - using reliable Tailwind colors
 const activityColors = [
-  'bg-pastel-blue',
-  'bg-pastel-green',
-  'bg-pastel-yellow',
-  'bg-pastel-pink',
-  'bg-pastel-purple',
-  'bg-pastel-orange',
-  'bg-pastel-red',
+  'bg-blue-100',
+  'bg-green-100',
+  'bg-yellow-100',
+  'bg-pink-100',
+  'bg-purple-100',
+  'bg-orange-100',
+  'bg-red-100',
+  'bg-indigo-100',
+  'bg-teal-100',
+  'bg-cyan-100',
+  'bg-lime-100',
+  'bg-emerald-100',
+  'bg-amber-100',
+  'bg-rose-100',
+  'bg-violet-100',
+  'bg-sky-100',
+  'bg-blue-100',
+  'bg-green-100',
+  'bg-yellow-100',
+  'bg-pink-100',
+  'bg-purple-100',
+  'bg-orange-100',
+  'bg-red-100',
+  'bg-indigo-100'
 ];
 
 // Helper function to convert 24-hour time to 12-hour format
@@ -99,119 +117,177 @@ export default function Home() {
   }[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [expandedActivities, setExpandedActivities] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
+  // Global pagination state
+  const [currentPage, setCurrentPage] = useState(0);
+  const datesPerPage = 8; // Show eight weeks at a time
+  const [selectedDate, setSelectedDate] = useState(''); // For date picker
+
+  // Load activities from Supabase
   useEffect(() => {
-    // Each activity has its own custom dates for demo - using explicit date strings
-    const sampleActivities: Activity[] = [
-      {
-        id: '1',
-        name: 'Soccer Practice',
-        dates: ['2025-01-25', '2025-02-01', '2025-02-08'],
-        startTime: '09:00',
-        endTime: '10:30',
-        location: 'Community Park',
-        contact: 'Coach Mike (555-0123)',
-        notes: 'Bring water bottle and shin guards',
-        notesDates: {
-          '2025-01-25': 'First practice of the season',
-          '2025-02-01': 'Focus on dribbling skills',
-          '2025-02-08': 'Team scrimmage day'
+    const loadActivities = async () => {
+      try {
+        setLoading(true);
+        const data = await activityService.getActivities();
+        setActivities(data);
+        
+        // Generate weeks based on the actual activity dates
+        let w = getAllDatesFromActivities(data);
+        
+        // If no activities exist, generate some initial weeks for the current month
+        if (w.length === 0) {
+          const today = new Date();
+          const currentMonth = today.getMonth();
+          const currentYear = today.getFullYear();
+          
+          // Generate 4 weeks starting from the current week
+          const initialWeeks: { 
+            monday: Date; 
+            tuesday: Date; 
+            wednesday: Date; 
+            thursday: Date; 
+            friday: Date; 
+            saturday: Date; 
+            sunday: Date; 
+          }[] = [];
+          
+          // Find the Monday of the current week
+          const dayOfWeek = today.getDay();
+          const daysUntilMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Sunday is 0, so we need to go back 6 days
+          const monday = new Date(today);
+          monday.setDate(today.getDate() - daysUntilMonday);
+          
+          // Generate 4 weeks
+          for (let weekIndex = 0; weekIndex < 4; weekIndex++) {
+            const weekMonday = new Date(monday);
+            weekMonday.setDate(monday.getDate() + (weekIndex * 7));
+            
+            const week = {
+              monday: new Date(weekMonday),
+              tuesday: new Date(weekMonday.getTime() + 1 * 24 * 60 * 60 * 1000),
+              wednesday: new Date(weekMonday.getTime() + 2 * 24 * 60 * 60 * 1000),
+              thursday: new Date(weekMonday.getTime() + 3 * 24 * 60 * 60 * 1000),
+              friday: new Date(weekMonday.getTime() + 4 * 24 * 60 * 60 * 1000),
+              saturday: new Date(weekMonday.getTime() + 5 * 24 * 60 * 60 * 1000),
+              sunday: new Date(weekMonday.getTime() + 6 * 24 * 60 * 60 * 1000)
+            };
+            
+            initialWeeks.push(week);
+          }
+          
+          w = initialWeeks;
         }
-      },
-      {
-        id: '2',
-        name: 'Gymnastics Class',
-        dates: ['2025-02-01', '2025-02-08', '2025-02-15', '2025-02-22', '2025-03-01'],
-        startTime: '14:00',
-        endTime: '15:30',
-        location: 'Elite Gymnastics Center',
-        contact: 'Coach Sarah (555-0456)',
-        notes: 'Wear leotard and bring hair ties'
-      },
-      {
-        id: '3',
-        name: 'Piano Lesson',
-        dates: ['2025-01-26', '2025-02-02', '2025-02-09', '2025-02-16', '2025-02-23', '2025-03-02', '2025-03-09', '2025-03-16', '2025-03-23', '2025-03-30', '2025-04-06', '2025-04-13', '2025-04-20', '2025-04-27', '2025-05-04', '2025-05-11', '2025-05-18', '2025-05-25', '2025-06-01', '2025-06-08', '2025-06-15', '2025-06-22', '2025-06-29', '2025-07-06', '2025-07-13', '2025-07-20', '2025-07-27', '2025-08-03', '2025-08-10', '2025-08-17', '2025-08-24', '2025-08-31', '2025-09-07', '2025-09-14', '2025-09-21', '2025-09-28', '2025-10-05', '2025-10-12', '2025-10-19', '2025-10-26', '2025-11-02', '2025-11-09', '2025-11-16', '2025-11-23', '2025-11-30', '2025-12-07', '2025-12-14', '2025-12-21', '2025-12-28'],
-        startTime: '11:00',
-        endTime: '12:00',
-        location: 'Music Academy',
-        contact: 'Ms. Johnson (555-0789)',
-        notes: 'Practice scales and new piece',
-        notesDates: {
-          '2025-01-26': 'New piece: Moonlight Sonata',
-          '2025-02-02': 'Focus on dynamics',
-          '2025-02-09': 'Recital preparation begins'
-        }
-      },
-      {
-        id: '4',
-        name: 'Swimming Lessons',
-        dates: ['2025-01-26', '2025-02-02', '2025-02-09', '2025-02-16', '2025-02-23'],
-        startTime: '15:00',
-        endTime: '16:00',
-        location: 'Aquatic Center',
-        contact: 'Coach Dave (555-0321)',
-        notes: 'Bring swimsuit and towel'
-      },
-      {
-        id: '5',
-        name: 'Art Class',
-        dates: ['2025-02-08', '2025-02-15', '2025-02-22', '2025-03-01'],
-        startTime: '10:00',
-        endTime: '11:30',
-        location: 'Creative Arts Studio',
-        contact: 'Ms. Davis (555-0654)',
-        notes: 'Bring sketchbook and pencils'
-      },
-      {
-        id: '6',
-        name: 'Dance Class',
-        dates: ['2025-01-27', '2025-02-03', '2025-02-10', '2025-02-17', '2025-02-24'],
-        startTime: '13:00',
-        endTime: '14:30',
-        location: 'Dance Academy',
-        contact: 'Ms. Wilson (555-0987)',
-        notes: 'Wear dance shoes and comfortable clothes'
+        
+        setWeeks(w);
+      } catch (err) {
+        console.error('Error loading activities:', err);
+        setError('Failed to load activities. Please check your Supabase configuration.');
+      } finally {
+        setLoading(false);
       }
-    ];
-    
-    setActivities(sampleActivities);
-    
-    // Generate weeks based on the actual activity dates
-    const w = getAllDatesFromActivities(sampleActivities);
-    
-    // Debug: Check specific dates for timezone issues
-    console.log('=== TIMEZONE DEBUGGING ===');
-    const testDate = new Date(2025, 1, 8); // February 8, 2025 (month is 0-indexed)
-    console.log('Test date Feb 8, 2025:', {
-      date: getDateString(testDate),
-      localDate: testDate.toLocaleDateString(),
-      dayOfWeek: testDate.getDay(),
-      dayName: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][testDate.getDay()]
-    });
-    
-    // Check if any weeks contain Feb 8 or 9
-    w.forEach((week, index) => {
-      if (getDateString(week.saturday) === '2025-02-08' || 
-          getDateString(week.saturday) === '2025-02-09' ||
-          getDateString(week.sunday) === '2025-02-08' ||
-          getDateString(week.sunday) === '2025-02-09') {
-        console.log(`Week ${index} contains Feb 8/9:`, {
-          monday: getDateString(week.monday),
-          saturday: getDateString(week.saturday),
-          sunday: getDateString(week.sunday),
-          saturdayDay: week.saturday.getDay(),
-          sundayDay: week.sunday.getDay()
-        });
-      }
-    });
-    console.log('=== END TIMEZONE DEBUGGING ===');
-    
-    console.log('Generated weeks:', w.length);
-    console.log('First week Saturday:', getDateString(w[0]?.saturday));
-    console.log('First week Sunday:', getDateString(w[0]?.sunday));
-    setWeeks(w);
+    };
+
+    loadActivities();
   }, []);
+
+  // Calculate total pages based on weeks
+  const totalPages = Math.ceil(weeks.length / datesPerPage);
+
+  // Get current page weeks
+  const getCurrentPageWeeks = () => {
+    const startIndex = currentPage * datesPerPage;
+    const endIndex = Math.min(startIndex + datesPerPage, weeks.length);
+    return weeks.slice(startIndex, endIndex);
+  };
+
+  // Navigation functions
+  const goToNextPage = () => {
+    if (currentPage < totalPages - 1) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const goToPrevPage = () => {
+    if (currentPage > 0) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const goToFirstPage = () => {
+    setCurrentPage(0);
+  };
+
+  const goToLastPage = () => {
+    setCurrentPage(totalPages - 1);
+  };
+
+  // Go to today's week
+  const goToToday = () => {
+    const today = new Date();
+    goToDate(today);
+  };
+
+  // Go to specific date
+  const goToDate = (targetDate: Date) => {
+    // Find the Monday of the target date's week
+    const dayOfWeek = targetDate.getDay();
+    const daysUntilMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Sunday is 0, so we need to go back 6 days
+    const monday = new Date(targetDate);
+    monday.setDate(targetDate.getDate() - daysUntilMonday);
+    
+    // Find which page contains this Monday
+    const targetMondayStr = getDateString(monday);
+    const pageIndex = weeks.findIndex(week => 
+      getDateString(week.monday) === targetMondayStr
+    );
+    
+    if (pageIndex !== -1) {
+      // Calculate which page this week is on
+      const targetPage = Math.floor(pageIndex / datesPerPage);
+      setCurrentPage(targetPage);
+    } else {
+      // If the target date is not in the current weeks, add it
+      // This is a simplified approach - in a real app you might want to regenerate weeks
+      console.log('Target date not found in current weeks');
+    }
+  };
+
+  // Handle date picker change
+  const handleDatePickerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const dateValue = e.target.value;
+    setSelectedDate(dateValue);
+    
+    if (dateValue) {
+      const [year, month, day] = dateValue.split('-').map(Number);
+      const targetDate = new Date(year, month - 1, day);
+      goToDate(targetDate);
+    }
+  };
+
+  // Get date range display for current page
+  const getCurrentPageRange = () => {
+    const currentWeeks = getCurrentPageWeeks();
+    if (currentWeeks.length === 0) return '';
+    
+    const start = currentWeeks[0].monday;
+    const end = currentWeeks[currentWeeks.length - 1].sunday;
+    const formatFull = (date: Date) =>
+      date.toLocaleDateString('en-US', {
+        weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
+      });
+    const startDate = formatFull(start);
+    const endDate = formatFull(end);
+    return startDate === endDate ? startDate : `${startDate} - ${endDate}`;
+  };
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric'
+    });
+  };
 
   // Assign a color to each activity based on activity ID for consistency
   const getActivityColor = (activityId: string) => {
@@ -275,83 +351,113 @@ export default function Home() {
   };
 
   // Add new activity
-  const handleAddActivity = (newActivity: Activity) => {
-    setActivities(prev => [...prev, newActivity]);
-    
-    // Update weeks if the new activity has dates that aren't covered
-    const updatedWeeks = getAllDatesFromActivities([...activities, newActivity]);
-    setWeeks(updatedWeeks);
+  const handleAddActivity = async (newActivity: Omit<Activity, 'id'>) => {
+    try {
+      const addedActivity = await activityService.addActivity(newActivity);
+      setActivities(prev => [...prev, addedActivity]);
+      
+      // Update weeks if the new activity has dates that aren't covered
+      const updatedWeeks = getAllDatesFromActivities([...activities, addedActivity]);
+      setWeeks(updatedWeeks);
+    } catch (err) {
+      console.error('Error adding activity:', err);
+      setError('Failed to add activity. Please try again.');
+    }
   };
 
   // Handle date selection changes from drag operations
-  const handleDateSelectionChange = (activityId: string, dates: string[], isAdding: boolean, notes?: Record<string, string>) => {
-    console.log('Date selection change:', {
-      activityId,
-      dates,
-      isAdding,
-      notes,
-      currentActivities: activities.map(a => ({ id: a.id, name: a.name, dates: a.dates }))
-    });
+  const handleDateSelectionChange = async (activityId: string, dates: string[], isAdding: boolean, notes?: Record<string, string>) => {
+    try {
+      const activity = activities.find(a => a.id === activityId);
+      if (!activity) return;
 
-    setActivities(prev => prev.map(activity => {
-      if (activity.id === activityId) {
-        if (isAdding) {
-          // Add dates that aren't already in the activity
-          const newDates = [...activity.dates];
-          dates.forEach(date => {
-            if (!newDates.includes(date)) {
-              newDates.push(date);
-            }
-          });
-          
-          // Update date notes if provided
-          const newDateNotes = { ...activity.notesDates };
-          if (notes) {
-            Object.assign(newDateNotes, notes);
+      let newDates: string[];
+      let newNotesDates = { ...activity.notesDates };
+
+      if (isAdding) {
+        // Add dates that aren't already in the activity
+        newDates = [...activity.dates];
+        dates.forEach(date => {
+          if (!newDates.includes(date)) {
+            newDates.push(date);
           }
-          
-          console.log(`Adding dates to ${activity.name}:`, { oldDates: activity.dates, newDates, notes });
-          return { ...activity, dates: newDates, notesDates: newDateNotes };
-        } else {
-          // Remove the specified dates
-          const newDates = activity.dates.filter(date => !dates.includes(date));
-          
-          // Remove date notes for the removed dates
-          const newDateNotes = { ...activity.notesDates };
-          dates.forEach(date => {
-            delete newDateNotes[date];
-          });
-          
-          console.log(`Removing dates from ${activity.name}:`, { oldDates: activity.dates, newDates });
-          return { ...activity, dates: newDates, notesDates: newDateNotes };
+        });
+        
+        // Update date notes if provided
+        if (notes) {
+          Object.assign(newNotesDates, notes);
         }
+      } else {
+        // Remove the specified dates
+        newDates = activity.dates.filter(date => !dates.includes(date));
+        
+        // Remove date notes for the removed dates
+        dates.forEach(date => {
+          delete newNotesDates[date];
+        });
       }
-      return activity;
-    }));
+
+      // Update in Supabase
+      await activityService.updateActivityDates(activityId, newDates, newNotesDates);
+      
+      // Update local state
+      setActivities(prev => prev.map(activity => 
+        activity.id === activityId 
+          ? { ...activity, dates: newDates, notesDates: newNotesDates }
+          : activity
+      ));
+    } catch (err) {
+      console.error('Error updating activity dates:', err);
+      setError('Failed to update activity. Please try again.');
+    }
   };
 
   // Handle date note changes (when only updating notes, not adding/removing dates)
-  const handleDateNoteChange = (activityId: string, dates: string[], notes: Record<string, string>) => {
-    console.log('Date note change:', {
-      activityId,
-      dates,
-      notes
-    });
+  const handleDateNoteChange = async (activityId: string, dates: string[], notes: Record<string, string>) => {
+    try {
+      const activity = activities.find(a => a.id === activityId);
+      if (!activity) return;
 
-    setActivities(prev => prev.map(activity => {
-      if (activity.id === activityId) {
-        const newDateNotes = { ...activity.notesDates };
-        Object.assign(newDateNotes, notes);
-        
-        console.log(`Updating notes for ${activity.name}:`, { notes });
-        return { ...activity, notesDates: newDateNotes };
-      }
-      return activity;
-    }));
+      const newNotesDates = { ...activity.notesDates };
+      Object.assign(newNotesDates, notes);
+
+      // Update in Supabase
+      await activityService.updateActivityDates(activityId, activity.dates, newNotesDates);
+      
+      // Update local state
+      setActivities(prev => prev.map(activity => 
+        activity.id === activityId 
+          ? { ...activity, notesDates: newNotesDates }
+          : activity
+      ));
+    } catch (err) {
+      console.error('Error updating activity notes:', err);
+      setError('Failed to update notes. Please try again.');
+    }
   };
 
+  // Show error message if there's an error
+  if (error) {
+    return (
+      <div className="min-h-screen bg-accent-blue flex items-center justify-center">
+        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md mx-4">
+          <div className="text-center">
+            <svg className="w-16 h-16 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Configuration Error</h3>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <p className="text-sm text-gray-500">
+              Please check your Supabase configuration in the .env.local file.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Don't render until data is loaded
-  if (weeks.length === 0 || activities.length === 0) {
+  if (loading) {
     return <LoadingSpinner />;
   }
 
@@ -368,14 +474,6 @@ export default function Home() {
         const timeB = b.startTime.replace(':', '');
         return parseInt(timeA) - parseInt(timeB);
       });
-
-    console.log(`Activities for ${dayKey}:`, filteredActivities.map(a => ({
-      id: a.id,
-      name: a.name,
-      dates: a.dates.filter(date => 
-        weeks.some(w => getDateString(w[dayKey] as Date) === date)
-      )
-    })));
 
     return filteredActivities;
   };
@@ -396,6 +494,8 @@ export default function Home() {
     return dayActivities.length > 0;
   });
 
+  const currentWeeks = getCurrentPageWeeks();
+
   return (
     <div className="min-h-screen bg-accent-blue">
       <div className="container mx-auto px-4 py-8">
@@ -406,9 +506,19 @@ export default function Home() {
           <p className="text-neutral-600">
             Plan your child's weekly extracurricular activities (scroll horizontally to see more weeks)
           </p>
+
+        </div>
+
+                  {/* Add Activity Form */}
+          <AddActivityForm 
+            onAddActivity={handleAddActivity} 
+            activities={activities}
+            weeks={weeks}
+            currentPageWeeks={currentWeeks}
+          />
           
           {/* Conflict Legend */}
-          <div className="mt-4 flex justify-center items-center space-x-6 text-sm">
+          <div className="my-4 flex justify-center items-center space-x-6 text-sm">
             <div className="flex items-center space-x-2">
               <div className="w-4 h-4 bg-pastel-blue border border-red-500 rounded flex items-center justify-center">
                 <svg className="w-3 h-3 text-neutral-600" fill="currentColor" viewBox="0 0 20 20">
@@ -434,10 +544,71 @@ export default function Home() {
               <span className="text-neutral-700">Drag to Add/Remove</span>
             </div>
           </div>
-        </div>
 
-        {/* Add Activity Form */}
-        <AddActivityForm onAddActivity={handleAddActivity} weeks={weeks} />
+        {/* Global Pagination Controls */}
+        {weeks.length > 0 && (
+          <div className="flex items-center justify-between mb-6 bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={goToFirstPage}
+                disabled={currentPage === 0}
+                className="px-3 py-1 text-sm bg-neutral-100 text-neutral-700 rounded-md hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                First
+              </button>
+              <button
+                onClick={goToPrevPage}
+                disabled={currentPage === 0}
+                className="px-3 py-1 text-sm bg-neutral-100 text-neutral-700 rounded-md hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Previous
+              </button>
+            </div>
+            
+            <div className="text-center">
+              <div className="text-sm font-bold text-neutral-700">
+                {getCurrentPageRange()}
+              </div>
+
+              <div className="mt-4 flex items-center space-x-2 justify-center">
+                <button
+                  onClick={goToToday}
+                  className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+                >
+                  Today
+                </button>
+
+                <div className="flex items-center space-x-2">
+                  <label className="text-xs text-neutral-600">Go to date:</label>
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={handleDatePickerChange}
+                    className="text-xs px-2 py-1 border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={goToNextPage}
+                disabled={currentPage === totalPages - 1}
+                className="px-3 py-1 text-sm bg-neutral-100 text-neutral-700 rounded-md hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Next
+              </button>
+              <button
+                onClick={goToLastPage}
+                disabled={currentPage === totalPages - 1}
+                className="px-3 py-1 text-sm bg-neutral-100 text-neutral-700 rounded-md hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Last
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Day Sections - Only show days with activities */}
         {activeDayConfigs.map(dayConfig => (
@@ -446,13 +617,22 @@ export default function Home() {
             title={dayConfig.title}
             color={dayConfig.color}
             activities={getActivitiesForDay(dayConfig.key as any)}
-            dates={weeks.map(w => w[dayConfig.key as keyof typeof w] as Date)}
+            dates={currentWeeks.map(w => w[dayConfig.key as keyof typeof w] as Date)}
             expandedActivities={expandedActivities}
             onToggleActivity={toggleActivity}
             getActivityColor={getActivityColor}
             formatTime={formatTime12Hour}
             onDateSelectionChange={handleDateSelectionChange}
             onDateNoteChange={handleDateNoteChange}
+            // Pass global pagination state
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            onNextPage={goToNextPage}
+            onPrevPage={goToPrevPage}
+            onFirstPage={goToFirstPage}
+            onLastPage={goToLastPage}
+            getCurrentPageRange={getCurrentPageRange}
           />
         ))}
 
