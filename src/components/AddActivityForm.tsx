@@ -147,66 +147,21 @@ export default function AddActivityForm({ onAddActivity, activities, weeks, curr
     return `${year}-${month}-${day}`;
   };
 
-  // Detect free weekends for the current page range
-  const getFreeWeekends = () => {
-    const freeDays: { day: string; date: string }[] = [];
-    
-    currentPageWeeks.forEach(week => {
-      const saturdayStr = getDateString(week.saturday);
-      const sundayStr = getDateString(week.sunday);
-      
-      // Check if there are any activities on Saturday or Sunday
-      const hasSaturdayActivity = activities.some(activity => 
-        activity.dates.includes(saturdayStr)
-      );
-      const hasSundayActivity = activities.some(activity => 
-        activity.dates.includes(sundayStr)
-      );
-      
-      // If Saturday has no activities, add it to free days
-      if (!hasSaturdayActivity) {
-        freeDays.push({ day: 'Sat', date: formatDate(week.saturday) });
-      }
-      
-      // If Sunday has no activities, add it to free days
-      if (!hasSundayActivity) {
-        freeDays.push({ day: 'Sun', date: formatDate(week.sunday) });
-      }
-    });
-    
-    return freeDays;
-  };
-
-  const freeWeekends = getFreeWeekends();
-
   return (
     <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-        <div>
-          <div className="text-sm font-medium text-gray-700 mb-2">Free weekend days in current range:</div>
-          {freeWeekends.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {freeWeekends.map((day, index) => (
-                <span key={index} className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                  {day.day} {day.date}
-                </span>
-              ))}
-            </div>
-          ) : (
-            <div className="text-xs text-gray-500">No free weekend days in current range</div>
-          )}
-        </div>
-
+      <div className="flex justify-end">
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="px-4 py-2 bg-gradient-to-r from-blue-600 to-teal-500 text-white rounded-lg hover:from-blue-700 hover:to-teal-600 transition-all duration-200 shadow-md"
         >
           {isExpanded ? 'Cancel' : 'Add Activity'}
         </button>
+      </div>
 
       {isExpanded && (
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
+        <form onSubmit={handleSubmit} className="space-y-6 pt-4">
+          <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
+            <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Activity Name *
               </label>
@@ -368,7 +323,7 @@ export default function AddActivityForm({ onAddActivity, activities, weeks, curr
             <button
               type="submit"
               disabled={!formData.startDate || !isEndDateValid || generatedDates.length === 0}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+              className="px-6 py-2 bg-gradient-to-r from-blue-600 to-teal-500 text-white rounded-lg hover:from-blue-700 hover:to-teal-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
             >
               Add Activity
             </button>

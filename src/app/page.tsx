@@ -6,6 +6,7 @@ import { getWeekendDates, hasTimeConflict } from '@/utils/dateUtils';
 import DaySection from '@/components/WeekendSection';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import AddActivityForm from '@/components/AddActivityForm';
+import FreeWeekendsDisplay from '@/components/FreeWeekendsDisplay';
 import { activityService } from '@/services/activityService';
 
 // Helper function to get date string in local timezone
@@ -436,6 +437,27 @@ export default function Home() {
     }
   };
 
+  // Handle activity updates (location, contact, website, notes)
+  const handleUpdateActivity = async (activityId: string, updates: Partial<Activity>) => {
+    try {
+      const activity = activities.find(a => a.id === activityId);
+      if (!activity) return;
+
+      // Update in Supabase
+      await activityService.updateActivity(activityId, updates);
+      
+      // Update local state
+      setActivities(prev => prev.map(activity => 
+        activity.id === activityId 
+          ? { ...activity, ...updates }
+          : activity
+      ));
+    } catch (err) {
+      console.error('Error updating activity:', err);
+      setError('Failed to update activity. Please try again.');
+    }
+  };
+
   // Show error message if there's an error
   if (error) {
     return (
@@ -500,16 +522,61 @@ export default function Home() {
     <div className="min-h-screen bg-accent-blue">
       <div className="container mx-auto px-4 py-8">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-neutral-800 mb-2">
-            Weekly Activity Planner
-          </h1>
-          <p className="text-neutral-600">
-            Plan your child's weekly extracurricular activities (scroll horizontally to see more weeks)
-          </p>
+          {/* Fancy Header with gradient background */}
+          <div className="bg-gradient-to-r from-blue-600 via-teal-500 to-emerald-600 rounded-2xl shadow-2xl p-8 mb-8 relative overflow-hidden">
+            {/* Background pattern */}
+            <div className="absolute inset-0 opacity-10">
+              <div className="absolute top-0 left-0 w-32 h-32 bg-white rounded-full -translate-x-16 -translate-y-16"></div>
+              <div className="absolute top-0 right-0 w-24 h-24 bg-white rounded-full translate-x-12 -translate-y-12"></div>
+              <div className="absolute bottom-0 left-0 w-20 h-20 bg-white rounded-full -translate-x-10 translate-y-10"></div>
+              <div className="absolute bottom-0 right-0 w-28 h-28 bg-white rounded-full translate-x-14 translate-y-14"></div>
+            </div>
+            
+            {/* Main content */}
+            <div className="relative z-10">
+              <div className="flex items-center justify-center mb-4">
+                <div className="bg-white/20 backdrop-blur-sm rounded-full p-3 mr-4">
+                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <h1 className="text-5xl font-bold text-white mb-2 drop-shadow-lg">
+                  Weekly Activity Planner
+                </h1>
+              </div>
+              
+              <p className="text-xl text-white/90 font-medium drop-shadow-md">
+                Plan your child's weekly extracurricular activities with ease
+              </p>
+              
+              {/* Decorative elements */}
+              <div className="flex justify-center mt-6 space-x-4">
+                <div className="flex items-center space-x-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-2">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-white text-sm font-medium">Smart Scheduling</span>
+                </div>
+                <div className="flex items-center space-x-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-2">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-white text-sm font-medium">Conflict Detection</span>
+                </div>
+                <div className="flex items-center space-x-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-2">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                  </svg>
+                  <span className="text-white text-sm font-medium">Family Friendly</span>
+                </div>
+              </div>
+            </div>
+          </div>
 
-        </div>
+          {/* Free Weekends Display */}
+          <FreeWeekendsDisplay activities={activities} currentPageWeeks={currentWeeks} />
 
-                  {/* Add Activity Form */}
+          {/* Add Activity Form */}
           <AddActivityForm 
             onAddActivity={handleAddActivity} 
             activities={activities}
@@ -517,33 +584,37 @@ export default function Home() {
             currentPageWeeks={currentWeeks}
           />
           
-          {/* Conflict Legend */}
-          <div className="my-4 flex justify-center items-center space-x-6 text-sm">
-            <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 bg-pastel-blue border border-red-500 rounded flex items-center justify-center">
-                <svg className="w-3 h-3 text-neutral-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
+          {/* Enhanced Conflict Legend */}
+          <div className="my-6 p-6">
+            <h3 className="text-lg font-semibold text-neutral-800 mb-4 text-center">Schedule Legend</h3>
+            <div className="flex justify-center items-center space-x-8 text-sm">
+              <div className="flex items-center space-x-3">
+                <div className="w-5 h-5 bg-pastel-blue border-2 border-red-500 rounded flex items-center justify-center">
+                  <svg className="w-3 h-3 text-neutral-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <span className="text-neutral-700 font-medium">Time Conflict</span>
               </div>
-              <span className="text-neutral-700">Time Conflict</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 bg-pastel-blue rounded"></div>
-              <span className="text-neutral-700">Scheduled Activity</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 bg-neutral-100 border border-neutral-200 rounded"></div>
-              <span className="text-neutral-700">No Activity</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 bg-pastel-blue border border-neutral-400 rounded flex items-center justify-center">
-                <svg className="w-3 h-3 text-neutral-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                </svg>
+              <div className="flex items-center space-x-3">
+                <div className="w-5 h-5 bg-pastel-blue rounded shadow-sm"></div>
+                <span className="text-neutral-700 font-medium">Scheduled Activity</span>
               </div>
-              <span className="text-neutral-700">Drag to Add/Remove</span>
+              <div className="flex items-center space-x-3">
+                <div className="w-5 h-5 bg-neutral-100 border-2 border-neutral-200 rounded"></div>
+                <span className="text-neutral-700 font-medium">No Activity</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <div className="w-5 h-5 bg-pastel-blue border-2 border-neutral-400 rounded flex items-center justify-center">
+                  <svg className="w-3 h-3 text-neutral-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <span className="text-neutral-700 font-medium">Drag to Add/Remove</span>
+              </div>
             </div>
           </div>
+        </div>
 
         {/* Global Pagination Controls */}
         {weeks.length > 0 && (
@@ -552,14 +623,14 @@ export default function Home() {
               <button
                 onClick={goToFirstPage}
                 disabled={currentPage === 0}
-                className="px-3 py-1 text-sm bg-neutral-100 text-neutral-700 rounded-md hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-3 py-1 text-sm bg-gradient-to-r from-blue-600 to-teal-500 text-white rounded-md hover:from-blue-700 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md"
               >
                 First
               </button>
               <button
                 onClick={goToPrevPage}
                 disabled={currentPage === 0}
-                className="px-3 py-1 text-sm bg-neutral-100 text-neutral-700 rounded-md hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-3 py-1 text-sm bg-gradient-to-r from-blue-600 to-teal-500 text-white rounded-md hover:from-blue-700 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md"
               >
                 Previous
               </button>
@@ -573,7 +644,7 @@ export default function Home() {
               <div className="mt-4 flex items-center space-x-2 justify-center">
                 <button
                   onClick={goToToday}
-                  className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+                  className="px-3 py-1 text-sm bg-gradient-to-r from-blue-600 to-teal-500 text-white rounded-md hover:from-blue-700 hover:to-teal-600 transition-all duration-200 shadow-md"
                 >
                   Today
                 </button>
@@ -595,14 +666,14 @@ export default function Home() {
               <button
                 onClick={goToNextPage}
                 disabled={currentPage === totalPages - 1}
-                className="px-3 py-1 text-sm bg-neutral-100 text-neutral-700 rounded-md hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-3 py-1 text-sm bg-gradient-to-r from-blue-600 to-teal-500 text-white rounded-md hover:from-blue-700 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md"
               >
                 Next
               </button>
               <button
                 onClick={goToLastPage}
                 disabled={currentPage === totalPages - 1}
-                className="px-3 py-1 text-sm bg-neutral-100 text-neutral-700 rounded-md hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-3 py-1 text-sm bg-gradient-to-r from-blue-600 to-teal-500 text-white rounded-md hover:from-blue-700 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md"
               >
                 Last
               </button>
@@ -624,6 +695,7 @@ export default function Home() {
             formatTime={formatTime12Hour}
             onDateSelectionChange={handleDateSelectionChange}
             onDateNoteChange={handleDateNoteChange}
+            onUpdateActivity={handleUpdateActivity}
             // Pass global pagination state
             currentPage={currentPage}
             totalPages={totalPages}
@@ -653,7 +725,7 @@ export default function Home() {
         <div className="text-center mt-8">
           <button
             onClick={addMoreWeeks}
-            className="px-6 py-3 bg-pastel-blue text-neutral-800 rounded-lg hover:bg-pastel-purple transition-colors font-medium border border-neutral-300"
+            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-teal-500 text-white rounded-lg hover:from-blue-700 hover:to-teal-600 transition-all duration-200 font-medium shadow-lg"
           >
             Add More Weeks (+4 weeks)
           </button>

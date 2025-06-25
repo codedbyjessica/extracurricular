@@ -17,6 +17,7 @@ interface DaySectionProps {
   formatTime: (time: string) => string;
   onDateSelectionChange?: (activityId: string, dates: string[], isAdding: boolean, notes?: Record<string, string>) => void;
   onDateNoteChange?: (activityId: string, dates: string[], notes: Record<string, string>) => void;
+  onUpdateActivity?: (activityId: string, updates: Partial<Activity>) => void;
   // Global pagination props
   currentPage: number;
   totalPages: number;
@@ -39,6 +40,7 @@ export default function DaySection({
   formatTime,
   onDateSelectionChange,
   onDateNoteChange,
+  onUpdateActivity,
   // Global pagination props
   currentPage,
   totalPages,
@@ -116,9 +118,11 @@ export default function DaySection({
       return { status: 'ended', color: 'text-gray-500' };
     } else if (firstActivityDate > lastPageDate) {
       return { status: 'not started', color: 'text-blue-600' };
+    } else {
+      // Activity has dates both before and after the current page range
+      // This means there's a gap in the current page range
+      return { status: 'gap', color: 'text-orange-600' };
     }
-    
-    return null;
   };
 
   // Check if an activity has conflicts on a specific date
@@ -331,14 +335,14 @@ export default function DaySection({
             <button
               onClick={onFirstPage}
               disabled={currentPage === 0}
-              className="px-3 py-1 text-sm bg-neutral-100 text-neutral-700 rounded-md hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-3 py-1 text-sm bg-gradient-to-r from-blue-600 to-teal-500 text-white rounded-md hover:from-blue-700 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md"
             >
               First
             </button>
             <button
               onClick={onPrevPage}
               disabled={currentPage === 0}
-              className="px-3 py-1 text-sm bg-neutral-100 text-neutral-700 rounded-md hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-3 py-1 text-sm bg-gradient-to-r from-blue-600 to-teal-500 text-white rounded-md hover:from-blue-700 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md"
             >
               Previous
             </button>
@@ -357,14 +361,14 @@ export default function DaySection({
             <button
               onClick={onNextPage}
               disabled={currentPage === totalPages - 1}
-              className="px-3 py-1 text-sm bg-neutral-100 text-neutral-700 rounded-md hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-3 py-1 text-sm bg-gradient-to-r from-blue-600 to-teal-500 text-white rounded-md hover:from-blue-700 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md"
             >
               Next
             </button>
             <button
               onClick={onLastPage}
               disabled={currentPage === totalPages - 1}
-              className="px-3 py-1 text-sm bg-neutral-100 text-neutral-700 rounded-md hover:bg-neutral-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-3 py-1 text-sm bg-gradient-to-r from-blue-600 to-teal-500 text-white rounded-md hover:from-blue-700 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md"
             >
               Last
             </button>
@@ -528,7 +532,7 @@ export default function DaySection({
             {/* Expanded Activity Details - spans full width */}
             {expandedActivities.has(activity.id) && (
               <div className="border-b border-neutral-200">
-                <ActivityDetails activity={activity} />
+                <ActivityDetails activity={activity} onUpdateActivity={onUpdateActivity} />
               </div>
             )}
           </div>

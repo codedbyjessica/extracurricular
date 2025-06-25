@@ -9,6 +9,7 @@ const mapDbRowToActivity = (row: any): Activity => ({
   startTime: row.start_time,
   endTime: row.end_time,
   location: row.location,
+  contact: row.contact,
   website: row.website,
   notes: row.notes,
   notesDates: row.notes_dates || {}
@@ -21,6 +22,7 @@ const mapActivityToDbRow = (activity: Omit<Activity, 'id'>) => ({
   start_time: activity.startTime,
   end_time: activity.endTime,
   location: activity.location,
+  contact: activity.contact,
   website: activity.website,
   notes: activity.notes,
   notes_dates: activity.notesDates || {}
@@ -69,6 +71,7 @@ export const activityService = {
     if (updates.startTime !== undefined) dbUpdates.start_time = updates.startTime;
     if (updates.endTime !== undefined) dbUpdates.end_time = updates.endTime;
     if (updates.location !== undefined) dbUpdates.location = updates.location;
+    if (updates.contact !== undefined) dbUpdates.contact = updates.contact;
     if (updates.website !== undefined) dbUpdates.website = updates.website;
     if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
     if (updates.notesDates !== undefined) dbUpdates.notes_dates = updates.notesDates;
