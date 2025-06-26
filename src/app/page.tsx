@@ -518,6 +518,10 @@ export default function Home() {
         )
       )
       .sort((a, b) => {
+        // Add safety checks for undefined startTime
+        if (!a || !b || !a.startTime || !b.startTime) {
+          return 0; // If either is undefined, don't change order
+        }
         const timeA = a.startTime.replace(':', '');
         const timeB = b.startTime.replace(':', '');
         return parseInt(timeA) - parseInt(timeB);
