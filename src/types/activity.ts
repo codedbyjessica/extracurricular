@@ -1,6 +1,7 @@
 export interface Activity {
   id: string;
   name: string;
+  attendee: string; // Person this activity is for
   dates: string[]; // ISO date strings for scheduled days
   startTime: string;
   endTime: string;
@@ -9,6 +10,7 @@ export interface Activity {
   website?: string;
   notes?: string;
   notesDates?: Record<string, string>; // Maps date strings to notes for specific dates
+  unconfirmed?: boolean; // Whether the activity is confirmed or not
 }
 
 export interface WeekendSchedule {

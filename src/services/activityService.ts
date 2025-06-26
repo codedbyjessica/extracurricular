@@ -4,7 +4,8 @@ import { Activity } from '@/types/activity';
 // Helper function to convert database row to Activity
 const mapDbRowToActivity = (row: any): Activity => ({
   id: row.id,
-  name: row.name,
+  name: row.name.charAt(0).toUpperCase() + row.name.slice(1), // capitalize first letter
+  attendee: row.attendee.charAt(0).toUpperCase() + row.attendee.slice(1), // capitalize first letter
   dates: row.dates || [],
   startTime: row.start_time,
   endTime: row.end_time,
@@ -12,12 +13,14 @@ const mapDbRowToActivity = (row: any): Activity => ({
   contact: row.contact,
   website: row.website,
   notes: row.notes,
-  notesDates: row.notes_dates || {}
+  notesDates: row.notes_dates || {},
+  unconfirmed: row.unconfirmed || false
 });
 
 // Helper function to convert Activity to database row
 const mapActivityToDbRow = (activity: Omit<Activity, 'id'>) => ({
   name: activity.name,
+  attendee: activity.attendee,
   dates: activity.dates,
   start_time: activity.startTime,
   end_time: activity.endTime,
@@ -25,7 +28,8 @@ const mapActivityToDbRow = (activity: Omit<Activity, 'id'>) => ({
   contact: activity.contact,
   website: activity.website,
   notes: activity.notes,
-  notes_dates: activity.notesDates || {}
+  notes_dates: activity.notesDates || {},
+  unconfirmed: activity.unconfirmed || false
 });
 
 export const activityService = {
@@ -67,6 +71,7 @@ export const activityService = {
     // Convert camelCase updates to snake_case for database
     const dbUpdates: any = {};
     if (updates.name !== undefined) dbUpdates.name = updates.name;
+    if (updates.attendee !== undefined) dbUpdates.attendee = updates.attendee;
     if (updates.dates !== undefined) dbUpdates.dates = updates.dates;
     if (updates.startTime !== undefined) dbUpdates.start_time = updates.startTime;
     if (updates.endTime !== undefined) dbUpdates.end_time = updates.endTime;
@@ -75,6 +80,7 @@ export const activityService = {
     if (updates.website !== undefined) dbUpdates.website = updates.website;
     if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
     if (updates.notesDates !== undefined) dbUpdates.notes_dates = updates.notesDates;
+    if (updates.unconfirmed !== undefined) dbUpdates.unconfirmed = updates.unconfirmed;
     
     const { data, error } = await supabase
       .from('activities')

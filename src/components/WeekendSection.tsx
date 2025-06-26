@@ -13,11 +13,12 @@ interface DaySectionProps {
   dates: Date[];
   expandedActivities: Set<string>;
   onToggleActivity: (activityId: string) => void;
-  getActivityColor: (activityId: string) => string;
+  getActivityColor: (activity: Activity) => string;
   formatTime: (time: string) => string;
   onDateSelectionChange?: (activityId: string, dates: string[], isAdding: boolean, notes?: Record<string, string>) => void;
   onDateNoteChange?: (activityId: string, dates: string[], notes: Record<string, string>) => void;
   onUpdateActivity?: (activityId: string, updates: Partial<Activity>) => void;
+  onDeleteActivity?: (activityId: string) => void;
   // Global pagination props
   currentPage: number;
   totalPages: number;
@@ -41,6 +42,7 @@ export default function DaySection({
   onDateSelectionChange,
   onDateNoteChange,
   onUpdateActivity,
+  onDeleteActivity,
   // Global pagination props
   currentPage,
   totalPages,
@@ -115,7 +117,7 @@ export default function DaySection({
     const lastActivityDate = sortedDates[sortedDates.length - 1];
     
     if (lastActivityDate < firstPageDate) {
-      return { status: 'ended', color: 'text-gray-500' };
+      return { status: 'ended', color: 'text-gray-300' };
     } else if (firstActivityDate > lastPageDate) {
       return { status: 'not started', color: 'text-blue-600' };
     } else {
@@ -327,92 +329,44 @@ export default function DaySection({
   return (
     <div className="mb-12" ref={containerRef}>
       <h2 className={`text-2xl font-bold ${color} mb-4 text-left`}>{title}</h2>
-      
-      {/* Pagination Controls - only show if this is the first section */}
-      {title === 'Monday' && (
-        <div className="flex items-center justify-between mb-4 bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={onFirstPage}
-              disabled={currentPage === 0}
-              className="px-3 py-1 text-sm bg-gradient-to-r from-blue-600 to-teal-500 text-white rounded-md hover:from-blue-700 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md"
-            >
-              First
-            </button>
-            <button
-              onClick={onPrevPage}
-              disabled={currentPage === 0}
-              className="px-3 py-1 text-sm bg-gradient-to-r from-blue-600 to-teal-500 text-white rounded-md hover:from-blue-700 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md"
-            >
-              Previous
-            </button>
-          </div>
-          
-          <div className="text-center">
-            <div className="text-sm font-medium text-neutral-700">
-              {getCurrentPageRange()}
-            </div>
-            <div className="text-xs text-neutral-500">
-              Page {currentPage + 1} of {totalPages}
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={onNextPage}
-              disabled={currentPage === totalPages - 1}
-              className="px-3 py-1 text-sm bg-gradient-to-r from-blue-600 to-teal-500 text-white rounded-md hover:from-blue-700 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md"
-            >
-              Next
-            </button>
-            <button
-              onClick={onLastPage}
-              disabled={currentPage === totalPages - 1}
-              className="px-3 py-1 text-sm bg-gradient-to-r from-blue-600 to-teal-500 text-white rounded-md hover:from-blue-700 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md"
-            >
-              Last
-            </button>
-          </div>
-        </div>
-      )}
 
       <div className="bg-white rounded-lg shadow-lg overflow-hidden border border-neutral-200">
         {/* Header row */}
         <div className="flex">
-          {/* Fixed Activity and Time columns header */}
-          <div className="flex-shrink-0 w-[320px] border-r border-neutral-200">
-            <div className="grid grid-cols-2 gap-1 p-4 bg-neutral-100 border-b border-neutral-200 font-semibold text-sm">
-              <div className="text-neutral-700">Activity</div>
-              <div className="text-neutral-700">Time</div>
+          {/* Fixed Activity, Time, and Status columns header */}
+          <div className="flex-shrink-0 w-[410px] border-r border-neutral-200">
+            <div className="grid grid-cols-4 gap-1 bg-neutral-100 border-b border-neutral-200 font-semibold text-sm">
+              <div className="text-neutral-700 p-4 col-span-2">Activity</div>
+              <div className="text-neutral-700 p-4 col-span-1">Time</div>
+              <div className="text-neutral-700 p-4 col-span-1">Status</div>
             </div>
           </div>
 
           {/* Date columns header */}
           <div className="flex-1">
-            <div className="grid gap-1 p-4 bg-neutral-100 border-b border-neutral-200 font-semibold text-sm" style={{ gridTemplateColumns: `repeat(${dates.length}, 1fr)` }}>
+            <div className="grid gap-1 bg-neutral-100 border-b border-neutral-200 font-semibold text-sm" style={{ gridTemplateColumns: `repeat(${dates.length}, 1fr)` }}>
               {dates.map((date, idx) => {
-                const dateStr = getDateString(date);
                 const month = date.getMonth();
                 // Different background colors for each month
                 const getMonthColor = (month: number) => {
                   switch (month) {
-                    case 0: return 'bg-pastel-blue'; // January
-                    case 1: return 'bg-pastel-purple'; // February
-                    case 2: return 'bg-pastel-green'; // March
-                    case 3: return 'bg-pastel-yellow'; // April
-                    case 4: return 'bg-pastel-pink'; // May
-                    case 5: return 'bg-pastel-orange'; // June
-                    case 6: return 'bg-pastel-red'; // July
-                    case 7: return 'bg-pastel-blue'; // August
-                    case 8: return 'bg-pastel-purple'; // September
-                    case 9: return 'bg-pastel-green'; // October
-                    case 10: return 'bg-pastel-yellow'; // November
-                    case 11: return 'bg-pastel-pink'; // December
+                    case 0: return 'bg-red-100'; // January
+                    case 1: return 'bg-orange-100'; // February
+                    case 2: return 'bg-yellow-100'; // March
+                    case 3: return 'bg-green-100'; // April
+                    case 4: return 'bg-blue-100'; // May
+                    case 5: return 'bg-purple-100'; // June
+                    case 6: return 'bg-red-100'; // July
+                    case 7: return 'bg-orange-100'; // August
+                    case 8: return 'bg-yellow-100'; // September
+                    case 9: return 'bg-green-100'; // October
+                    case 10: return 'bg-blue-100'; // November
+                    case 11: return 'bg-purple-100'; // December
                     default: return 'bg-neutral-100';
                   }
                 };
                 return (
-                  <div key={idx} className={`text-center ${getMonthColor(month)}/30 rounded flex flex-col items-center justify-center`}>
+                  <div key={idx} className={`p-4 text-center ${getMonthColor(month)} rounded flex flex-col items-center justify-center`}>
                       {date.toLocaleDateString('en-US')}
                   </div>
                 );
@@ -426,14 +380,21 @@ export default function DaySection({
           <div key={activity.id}>
             {/* Activity row */}
             <div className="flex border-b border-neutral-200 hover:bg-neutral-50 transition-colors">
-              {/* Fixed Activity and Time columns */}
-              <div className="flex-shrink-0 w-[320px] border-r border-neutral-200">
-                <div className="grid grid-cols-2 gap-1 p-4">
+              {/* Fixed Activity, Time, and Status columns */}
+              <div className="flex-shrink-0 w-[410px] border-r border-neutral-200">
+                <div className="grid grid-cols-4 gap-1">
                   <div 
-                    className={`font-medium text-neutral-900 flex items-center cursor-pointer h-8 pl-2 mr-2 ${getActivityColor(activity.id)}`}
+                    className={`font-medium text-neutral-900 flex items-center cursor-pointer h-8 mt-4 px-4 col-span-2 ${activity.unconfirmed ? 'bg-gray-400' : getActivityColor(activity)}`}
                     onClick={() => onToggleActivity(activity.id)}
                   >
-                      {activity.name}
+                      <span>
+                        {activity.name}
+                        {activity.attendee && (
+                          <span className="text-xs text-neutral-600 ml-1">
+                            ({activity.attendee})
+                          </span>
+                        )}
+                      </span>
                     <svg 
                       className={`w-4 h-4 ml-2 transition-transform ${
                         expandedActivities.has(activity.id) ? 'rotate-180' : ''
@@ -444,29 +405,47 @@ export default function DaySection({
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
-
-
+                  </div>
+                  <div className="text-neutral-700 text-sm flex items-center h-8 mt-4 pl-4">
+                    {formatTime(activity.startTime)} - <br/> {formatTime(activity.endTime)}
+                  </div>
+                  <div className="text-neutral-700 text-sm h-8 mt-4 pl-4">
                     {(() => {
                       const status = getActivityStatus(activity);
+                      let statusText = '';
+                      let statusColor = '';
+                      
+                      // Determine the base status
                       if (status) {
-                        return (
-                          <span className={`ml-2 text-[10px] font-normal ${status.color}`}>
-                            ({status.status})
-                          </span>
-                        );
+                        statusText = status.status;
+                        // Override colors based on status
+                        switch (status.status) {
+                          case 'not started':
+                            statusColor = 'text-blue-600';
+                            break;
+                          case 'ended':
+                            statusColor = 'text-gray-600';
+                            break;
+                          case 'gap':
+                            statusColor = 'text-red-600';
+                            break;
+                          default:
+                            statusColor = status.color;
+                        }
+                      } else {
+                        statusText = 'Active';
+                        statusColor = 'text-green-600';
                       }
-                      return null;
+                      
+                      return <span className={`font-medium ${activity.unconfirmed ? 'text-gray-400' : statusColor}`}>{statusText}</span>;
                     })()}
-                  </div>
-                  <div className="text-neutral-700 text-sm flex items-center h-8">
-                    {formatTime(activity.startTime)} - {formatTime(activity.endTime)}
                   </div>
                 </div>
               </div>
 
               {/* Date cells */}
               <div className="flex-1">
-                <div className="grid gap-1 p-4" style={{ gridTemplateColumns: `repeat(${dates.length}, 1fr)` }}>
+                <div className="grid gap-1 py-4" style={{ gridTemplateColumns: `repeat(${dates.length}, 1fr)` }}>
                   {dates.map((date, dateIdx) => {
                     const dateStr = getDateString(date);
                     const isActive = activity.dates.includes(dateStr);
@@ -474,16 +453,18 @@ export default function DaySection({
                     const inDragSelection = isCellInDragSelection(activity.id, dateIdx);
                     const hasNote = activity.notesDates?.[dateStr];
                     
-                    let cellClasses = 'h-8 rounded flex items-center justify-center cursor-pointer transition-all duration-150 relative group ';
+                    let cellClasses = 'font-semibold h-8 rounded flex items-center justify-center cursor-pointer transition-all duration-150 relative group ';
                     
                     if (inDragSelection) {
                       cellClasses += dragMode === 'add' 
-                        ? 'bg-pastel-blue border border-neutral-400 font-bold' 
-                        : 'bg-pastel-red border border-neutral-400 font-bold';
+                        ? 'bg-pastel-blue border border-neutral-400' 
+                        : 'bg-pastel-red border border-neutral-400';
                     } else if (hasConflict) {
-                      cellClasses += getActivityColor(activity.id) + ' font-semibold border border-red-500';
+                      cellClasses += getActivityColor(activity) + ' border border-red-500';
+                    } else if (activity.unconfirmed && isActive) {
+                      cellClasses += 'bg-neutral-400';
                     } else if (isActive) {
-                      cellClasses += getActivityColor(activity.id) + ' font-semibold';
+                      cellClasses += getActivityColor(activity);
                     } else {
                       cellClasses += 'bg-neutral-200 hover:bg-neutral-300';
                     }
@@ -532,7 +513,7 @@ export default function DaySection({
             {/* Expanded Activity Details - spans full width */}
             {expandedActivities.has(activity.id) && (
               <div className="border-b border-neutral-200">
-                <ActivityDetails activity={activity} onUpdateActivity={onUpdateActivity} />
+                <ActivityDetails activity={activity} onUpdateActivity={onUpdateActivity} onDeleteActivity={onDeleteActivity} />
               </div>
             )}
           </div>

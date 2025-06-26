@@ -61,6 +61,7 @@ CREATE TABLE activities (
   end_time TEXT NOT NULL,
   location TEXT,
   contact TEXT,
+  attendee TEXT NOT NULL,
   notes TEXT,
   notes_dates JSONB DEFAULT '{}',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

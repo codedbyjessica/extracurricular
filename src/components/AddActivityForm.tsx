@@ -29,13 +29,15 @@ interface AddActivityFormProps {
 export default function AddActivityForm({ onAddActivity, activities, weeks, currentPageWeeks }: AddActivityFormProps) {
   const [formData, setFormData] = useState({
     name: '',
+    attendee: '',
     startDate: '',
     endDate: '',
     startTime: '',
     endTime: '',
     location: '',
     website: '',
-    notes: ''
+    notes: '',
+    unconfirmed: false
   });
 
   const [isExpanded, setIsExpanded] = useState(false);
@@ -49,12 +51,14 @@ export default function AddActivityForm({ onAddActivity, activities, weeks, curr
     // Create new activity
     const newActivity: Omit<Activity, 'id'> = {
       name: formData.name,
+      attendee: formData.attendee,
       dates: dates,
       startTime: formData.startTime,
       endTime: formData.endTime,
       location: formData.location,
       website: formData.website,
-      notes: formData.notes
+      notes: formData.notes,
+      unconfirmed: formData.unconfirmed
     };
     
     onAddActivity(newActivity);
@@ -62,13 +66,15 @@ export default function AddActivityForm({ onAddActivity, activities, weeks, curr
     // Reset form
     setFormData({
       name: '',
+      attendee: '',
       startDate: '',
       endDate: '',
       startTime: '',
       endTime: '',
       location: '',
       website: '',
-      notes: ''
+      notes: '',
+      unconfirmed: false
     });
     setIsExpanded(false);
   };
@@ -139,16 +145,8 @@ export default function AddActivityForm({ onAddActivity, activities, weeks, curr
     return new Date(year, month - 1, day);
   };
 
-  // Helper function to get date string in local timezone
-  const getDateString = (date: Date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+    <div>
       <div className="flex justify-end">
         <button
           onClick={() => setIsExpanded(!isExpanded)}
@@ -159,10 +157,10 @@ export default function AddActivityForm({ onAddActivity, activities, weeks, curr
       </div>
 
       {isExpanded && (
-        <form onSubmit={handleSubmit} className="space-y-6 pt-4">
+        <form onSubmit={handleSubmit} className="space-y-6 mt-4 pt-4 bg-white rounded-lg shadow-md p-6 mb-8">
           <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1 text-left">
                 Activity Name *
               </label>
               <input
@@ -177,7 +175,22 @@ export default function AddActivityForm({ onAddActivity, activities, weeks, curr
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1 text-left">
+                Attendee *
+              </label>
+              <input
+                type="text"
+                name="attendee"
+                value={formData.attendee}
+                onChange={handleChange}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g., John Doe"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1 text-left">
                 Start Date *
               </label>
               <input
@@ -191,7 +204,7 @@ export default function AddActivityForm({ onAddActivity, activities, weeks, curr
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1 text-left">
                 End Date (Optional)
               </label>
               <input
@@ -208,7 +221,7 @@ export default function AddActivityForm({ onAddActivity, activities, weeks, curr
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1 text-left">
                 Start Time *
               </label>
               <input
@@ -222,7 +235,7 @@ export default function AddActivityForm({ onAddActivity, activities, weeks, curr
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1 text-left">
                 End Time *
               </label>
               <input
@@ -236,7 +249,7 @@ export default function AddActivityForm({ onAddActivity, activities, weeks, curr
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1 text-left">
                 Location
               </label>
               <input
@@ -250,7 +263,7 @@ export default function AddActivityForm({ onAddActivity, activities, weeks, curr
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1 text-left">
                 Website
               </label>
               <input
@@ -265,7 +278,7 @@ export default function AddActivityForm({ onAddActivity, activities, weeks, curr
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1 text-left">
               Notes
             </label>
             <textarea
@@ -278,9 +291,22 @@ export default function AddActivityForm({ onAddActivity, activities, weeks, curr
             />
           </div>
 
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              name="unconfirmed"
+              checked={formData.unconfirmed}
+              onChange={(e) => setFormData(prev => ({ ...prev, unconfirmed: e.target.checked }))}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <label className="ml-2 block text-sm text-gray-700">
+              Unconfirmed activity (will appear in dark grey)
+            </label>
+          </div>
+
           {/* Schedule Preview */}
           {formData.startDate && isEndDateValid && generatedDates.length > 0 && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left">
               <h4 className="text-sm font-medium text-blue-800 mb-2">Schedule Preview</h4>
               <p className="text-sm text-blue-700 mb-2">
                 This activity will be scheduled every <span className="font-medium">{dayOfWeek}</span>
@@ -322,7 +348,7 @@ export default function AddActivityForm({ onAddActivity, activities, weeks, curr
             </button>
             <button
               type="submit"
-              disabled={!formData.startDate || !isEndDateValid || generatedDates.length === 0}
+              disabled={!formData.name || !formData.attendee || !formData.startDate || !isEndDateValid || generatedDates.length === 0}
               className="px-6 py-2 bg-gradient-to-r from-blue-600 to-teal-500 text-white rounded-lg hover:from-blue-700 hover:to-teal-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
             >
               Add Activity

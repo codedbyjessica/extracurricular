@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Activity, WeekendSchedule } from '@/types/activity';
-import { getWeekendDates, hasTimeConflict } from '@/utils/dateUtils';
+import { Activity } from '@/types/activity';
 import DaySection from '@/components/WeekendSection';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import AddActivityForm from '@/components/AddActivityForm';
 import FreeWeekendsDisplay from '@/components/FreeWeekendsDisplay';
+import AttendeeSummary from '@/components/AttendeeSummary';
 import { activityService } from '@/services/activityService';
 
 // Helper function to get date string in local timezone
@@ -87,15 +87,7 @@ const activityColors = [
   'bg-amber-100',
   'bg-rose-100',
   'bg-violet-100',
-  'bg-sky-100',
-  'bg-blue-100',
-  'bg-green-100',
-  'bg-yellow-100',
-  'bg-pink-100',
-  'bg-purple-100',
-  'bg-orange-100',
-  'bg-red-100',
-  'bg-indigo-100'
+  'bg-sky-100'
 ];
 
 // Helper function to convert 24-hour time to 12-hour format
@@ -107,6 +99,9 @@ const formatTime12Hour = (time: string): string => {
 };
 
 export default function Home() {
+  // Configuration
+  const WEEKS_PER_PAGE = 8; // Show 8 weeks at a time
+  
   const [weeks, setWeeks] = useState<{ 
     monday: Date; 
     tuesday: Date; 
@@ -121,9 +116,8 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Global pagination state
+  // Global pagination state - now represents the starting week index
   const [currentPage, setCurrentPage] = useState(0);
-  const datesPerPage = 8; // Show eight weeks at a time
   const [selectedDate, setSelectedDate] = useState(''); // For date picker
 
   // Load activities from Supabase
@@ -193,17 +187,24 @@ export default function Home() {
     loadActivities();
   }, []);
 
-  // Calculate total pages based on weeks
-  const totalPages = Math.ceil(weeks.length / datesPerPage);
+  // Calculate total pages based on weeks (now represents max starting week index)
+  const totalPages = Math.max(0, weeks.length - WEEKS_PER_PAGE + 1);
 
-  // Get current page weeks
+  // Get current page weeks - now shows 8 weeks starting from currentPage
   const getCurrentPageWeeks = () => {
-    const startIndex = currentPage * datesPerPage;
-    const endIndex = Math.min(startIndex + datesPerPage, weeks.length);
+    const startIndex = currentPage;
+    const endIndex = Math.min(startIndex + WEEKS_PER_PAGE, weeks.length);
+    
+    // If we're near the end and don't have enough weeks, adjust to show exactly 8 weeks
+    if (endIndex - startIndex < WEEKS_PER_PAGE && weeks.length >= WEEKS_PER_PAGE) {
+      const adjustedStartIndex = Math.max(0, weeks.length - WEEKS_PER_PAGE);
+      return weeks.slice(adjustedStartIndex, weeks.length);
+    }
+    
     return weeks.slice(startIndex, endIndex);
   };
 
-  // Navigation functions
+  // Navigation functions - move by 1 week while keeping 8 weeks visible
   const goToNextPage = () => {
     if (currentPage < totalPages - 1) {
       setCurrentPage(currentPage + 1);
@@ -246,7 +247,7 @@ export default function Home() {
     
     if (pageIndex !== -1) {
       // Calculate which page this week is on
-      const targetPage = Math.floor(pageIndex / datesPerPage);
+      const targetPage = Math.floor(pageIndex / WEEKS_PER_PAGE);
       setCurrentPage(targetPage);
     } else {
       // If the target date is not in the current weeks, add it
@@ -283,22 +284,18 @@ export default function Home() {
     return startDate === endDate ? startDate : `${startDate} - ${endDate}`;
   };
 
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric'
-    });
-  };
-
-  // Assign a color to each activity based on activity ID for consistency
-  const getActivityColor = (activityId: string) => {
-    // Create a hash from the activity ID to get a consistent index
+  // Assign a color to each activity based on multiple properties for better distribution
+  const getActivityColor = (activity: Activity) => {
+    // Create a composite hash from multiple activity properties
+    const compositeString = `${activity.name}-${activity.attendee}-${activity.id}`;
+    
     let hash = 0;
-    for (let i = 0; i < activityId.length; i++) {
-      const char = activityId.charCodeAt(i);
+    for (let i = 0; i < compositeString.length; i++) {
+      const char = compositeString.charCodeAt(i);
       hash = ((hash << 5) - hash) + char;
       hash = hash & hash; // Convert to 32-bit integer
     }
+    
     const index = Math.abs(hash) % activityColors.length;
     return activityColors[index];
   };
@@ -348,7 +345,13 @@ export default function Home() {
       additionalWeeks.push(week);
     }
     
-    setWeeks([...weeks, ...additionalWeeks]);
+    const newWeeks = [...weeks, ...additionalWeeks];
+    setWeeks(newWeeks);
+    
+    // Automatically navigate to the first of the newly added weeks
+    const firstNewWeekIndex = weeks.length;
+    const targetPage = Math.floor(firstNewWeekIndex / WEEKS_PER_PAGE);
+    setCurrentPage(targetPage);
   };
 
   // Add new activity
@@ -458,6 +461,31 @@ export default function Home() {
     }
   };
 
+  // Handle activity deletion
+  const handleDeleteActivity = async (activityId: string) => {
+    try {
+      // Delete from Supabase
+      await activityService.deleteActivity(activityId);
+      
+      // Update local state
+      setActivities(prev => prev.filter(activity => activity.id !== activityId));
+      
+      // Remove from expanded activities
+      setExpandedActivities(prev => {
+        const newExpanded = new Set(prev);
+        newExpanded.delete(activityId);
+        return newExpanded;
+      });
+      
+      // Update weeks if needed
+      const updatedWeeks = getAllDatesFromActivities(activities.filter(a => a.id !== activityId));
+      setWeeks(updatedWeeks);
+    } catch (err) {
+      console.error('Error deleting activity:', err);
+      setError('Failed to delete activity. Please try again.');
+    }
+  };
+
   // Show error message if there's an error
   if (error) {
     return (
@@ -523,58 +551,71 @@ export default function Home() {
       <div className="container mx-auto px-4 py-8">
         <div className="text-center mb-8">
           {/* Fancy Header with gradient background */}
-          <div className="bg-gradient-to-r from-blue-600 via-teal-500 to-emerald-600 rounded-2xl shadow-2xl p-8 mb-8 relative overflow-hidden">
-            {/* Background pattern */}
+          <header className="bg-gradient-to-r from-blue-600 via-teal-500 to-emerald-600 rounded-2xl shadow-2xl p-8 mb-8 relative overflow-hidden">
+            {/* Enhanced background pattern */}
             <div className="absolute inset-0 opacity-10">
-              <div className="absolute top-0 left-0 w-32 h-32 bg-white rounded-full -translate-x-16 -translate-y-16"></div>
-              <div className="absolute top-0 right-0 w-24 h-24 bg-white rounded-full translate-x-12 -translate-y-12"></div>
-              <div className="absolute bottom-0 left-0 w-20 h-20 bg-white rounded-full -translate-x-10 translate-y-10"></div>
-              <div className="absolute bottom-0 right-0 w-28 h-28 bg-white rounded-full translate-x-14 translate-y-14"></div>
+              <div className="absolute top-0 left-0 w-32 h-32 bg-white rounded-full -translate-x-16 -translate-y-16 animate-pulse"></div>
+              <div className="absolute top-0 right-0 w-24 h-24 bg-white rounded-full translate-x-12 -translate-y-12 animate-pulse" style={{animationDelay: '1s'}}></div>
+              <div className="absolute bottom-0 left-0 w-20 h-20 bg-white rounded-full -translate-x-10 translate-y-10 animate-pulse" style={{animationDelay: '2s'}}></div>
+              <div className="absolute bottom-0 right-0 w-28 h-28 bg-white rounded-full translate-x-14 translate-y-14 animate-pulse" style={{animationDelay: '3s'}}></div>
+              
+              {/* Additional decorative elements */}
+              <div className="absolute top-1/4 left-1/4 w-16 h-16 bg-white/30 rounded-full blur-sm"></div>
+              <div className="absolute top-3/4 right-1/4 w-12 h-12 bg-white/20 rounded-full blur-sm"></div>
+              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-40 h-40 bg-white/5 rounded-full blur-xl"></div>
+              
+              {/* Geometric patterns */}
+              <div className="absolute top-4 right-8 w-8 h-8 border-2 border-white/20 rotate-45"></div>
+              <div className="absolute bottom-8 left-8 w-6 h-6 border-2 border-white/20 rotate-45"></div>
+              <div className="absolute top-1/2 left-8 w-4 h-4 bg-white/30 rounded-sm rotate-12"></div>
+              <div className="absolute top-1/2 right-8 w-4 h-4 bg-white/30 rounded-sm -rotate-12"></div>
             </div>
+            
+            {/* Animated gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-pulse"></div>
             
             {/* Main content */}
             <div className="relative z-10">
               <div className="flex items-center justify-center mb-4">
-                <div className="bg-white/20 backdrop-blur-sm rounded-full p-3 mr-4">
-                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="bg-white/20 backdrop-blur-sm rounded-full p-3 mr-4 shadow-lg border border-white/30 hover:bg-white/30 transition-all duration-300 hover:scale-110">
+                  <svg className="w-8 h-8 text-white drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                 </div>
-                <h1 className="text-5xl font-bold text-white mb-2 drop-shadow-lg">
-                  Weekly Activity Planner
+                <h1 className="text-5xl font-bold text-white drop-shadow-lg bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent">
+                Schedz
                 </h1>
               </div>
               
-              <p className="text-xl text-white/90 font-medium drop-shadow-md">
-                Plan your child's weekly extracurricular activities with ease
+              <p className="text-xl text-white/90 font-medium drop-shadow-md text-center">
+                Visual scheduling made simple.
               </p>
               
-              {/* Decorative elements */}
-              <div className="flex justify-center mt-6 space-x-4">
-                <div className="flex items-center space-x-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-2">
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span className="text-white text-sm font-medium">Smart Scheduling</span>
-                </div>
-                <div className="flex items-center space-x-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-2">
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span className="text-white text-sm font-medium">Conflict Detection</span>
-                </div>
-                <div className="flex items-center space-x-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-2">
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                  </svg>
-                  <span className="text-white text-sm font-medium">Family Friendly</span>
-                </div>
+              {/* Decorative line */}
+              <div className="flex justify-center mt-4">
+                <div className="w-24 h-1 bg-white/30 rounded-full"></div>
+                <div className="w-2 h-2 bg-white/50 rounded-full mx-2 mt-1"></div>
+                <div className="w-24 h-1 bg-white/30 rounded-full"></div>
               </div>
             </div>
-          </div>
+          </header>
 
-          {/* Free Weekends Display */}
-          <FreeWeekendsDisplay activities={activities} currentPageWeeks={currentWeeks} />
+          <div className="flex md:flex-row flex-col justify-between bg-white rounded-lg shadow-md p-6 mb-6">
+            
+
+            <div className="md:w-1/2">
+              {/* Attendee Summary */}
+              <AttendeeSummary activities={activities} currentPageWeeks={currentWeeks} />
+            </div>
+
+            <div className="md:block hidden w-[1px] bg-neutral-400 mx-8" />
+
+            {/* Free Weekends Display */}
+            <div className="md:w-1/2">
+              <FreeWeekendsDisplay activities={activities} currentPageWeeks={currentWeeks} />
+            </div>
+
+          </div>
 
           {/* Add Activity Form */}
           <AddActivityForm 
@@ -587,7 +628,7 @@ export default function Home() {
           {/* Enhanced Conflict Legend */}
           <div className="my-6 p-6">
             <h3 className="text-lg font-semibold text-neutral-800 mb-4 text-center">Schedule Legend</h3>
-            <div className="flex justify-center items-center space-x-8 text-sm">
+            <div className="flex flex-wrap justify-center items-center gap-6 text-sm">
               <div className="flex items-center space-x-3">
                 <div className="w-5 h-5 bg-pastel-blue border-2 border-red-500 rounded flex items-center justify-center">
                   <svg className="w-3 h-3 text-neutral-600" fill="currentColor" viewBox="0 0 20 20">
@@ -611,6 +652,13 @@ export default function Home() {
                   </svg>
                 </div>
                 <span className="text-neutral-700 font-medium">Drag to Add/Remove</span>
+              </div>
+
+              <div className="flex flex-wrap justify-center items-center gap-6 text-sm">
+                <div className="text-neutral-900 font-medium">Active (Current Range)</div>
+                <div className="text-blue-600 font-medium">Not Started Yet</div>
+                <div className="text-gray-300 font-medium">Ended</div>
+                <div className="text-orange-600 font-medium">Gap in Schedule</div>
               </div>
             </div>
           </div>
@@ -696,6 +744,7 @@ export default function Home() {
             onDateSelectionChange={handleDateSelectionChange}
             onDateNoteChange={handleDateNoteChange}
             onUpdateActivity={handleUpdateActivity}
+            onDeleteActivity={handleDeleteActivity}
             // Pass global pagination state
             currentPage={currentPage}
             totalPages={totalPages}
@@ -727,11 +776,8 @@ export default function Home() {
             onClick={addMoreWeeks}
             className="px-6 py-3 bg-gradient-to-r from-blue-600 to-teal-500 text-white rounded-lg hover:from-blue-700 hover:to-teal-600 transition-all duration-200 font-medium shadow-lg"
           >
-            Add More Weeks (+4 weeks)
+            Add Empty Weeks (+4 weeks)
           </button>
-          <p className="text-sm text-neutral-500 mt-2">
-            Currently showing {weeks.length} weeks
-          </p>
         </div>
       </div>
     </div>
