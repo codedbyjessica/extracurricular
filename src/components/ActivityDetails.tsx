@@ -331,6 +331,9 @@ export default function ActivityDetails({ activity, onUpdateActivity, onDeleteAc
           </div>
         ) : (
           <SectionBox>
+            <div className="text-sm text-gray-600 mb-2">
+              General notes about this activity (optional)
+            </div>
             <div className="italic">{activity.notes || 'No general notes'}</div>
           </SectionBox>
         )}
@@ -411,7 +414,7 @@ export default function ActivityDetails({ activity, onUpdateActivity, onDeleteAc
           <div className="bg-white rounded-lg p-6 max-w-md mx-4">
             <h3 className="text-lg font-semibold text-gray-800 mb-4">Delete Activity</h3>
             <p className="text-gray-600 mb-6">
-              Are you sure you want to delete "{activity.name}"? This action cannot be undone.
+              Are you sure you want to delete &quot;{activity.name}&quot;? This action cannot be undone.
             </p>
             <div className="flex space-x-3">
               <button

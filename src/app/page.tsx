@@ -134,8 +134,6 @@ export default function Home() {
         // If no activities exist, generate some initial weeks for the current month
         if (w.length === 0) {
           const today = new Date();
-          const currentMonth = today.getMonth();
-          const currentYear = today.getFullYear();
           
           // Generate 4 weeks starting from the current week
           const initialWeeks: { 
@@ -376,7 +374,7 @@ export default function Home() {
       if (!activity) return;
 
       let newDates: string[];
-      let newNotesDates = { ...activity.notesDates };
+      const newNotesDates = { ...activity.notesDates };
 
       if (isAdding) {
         // Add dates that aren't already in the activity
@@ -540,7 +538,7 @@ export default function Home() {
 
   // Filter day configs to only include days that have activities
   const activeDayConfigs = dayConfigs.filter(dayConfig => {
-    const dayActivities = getActivitiesForDay(dayConfig.key as any);
+    const dayActivities = getActivitiesForDay(dayConfig.key as 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday');
     return dayActivities.length > 0;
   });
 
@@ -605,7 +603,7 @@ export default function Home() {
 
             <div className="md:w-1/2">
               {/* Attendee Summary */}
-              <AttendeeSummary activities={activities} currentPageWeeks={currentWeeks} />
+              <AttendeeSummary activities={activities} />
             </div>
 
             <div className="md:block hidden w-[1px] bg-neutral-400 mx-8" />
@@ -620,9 +618,6 @@ export default function Home() {
           {/* Add Activity Form */}
           <AddActivityForm 
             onAddActivity={handleAddActivity} 
-            activities={activities}
-            weeks={weeks}
-            currentPageWeeks={currentWeeks}
           />
           
           {/* Enhanced Conflict Legend */}
@@ -735,7 +730,7 @@ export default function Home() {
             key={dayConfig.key}
             title={dayConfig.title}
             color={dayConfig.color}
-            activities={getActivitiesForDay(dayConfig.key as any)}
+            activities={getActivitiesForDay(dayConfig.key as 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday')}
             dates={currentWeeks.map(w => w[dayConfig.key as keyof typeof w] as Date)}
             expandedActivities={expandedActivities}
             onToggleActivity={toggleActivity}
@@ -745,15 +740,6 @@ export default function Home() {
             onDateNoteChange={handleDateNoteChange}
             onUpdateActivity={handleUpdateActivity}
             onDeleteActivity={handleDeleteActivity}
-            // Pass global pagination state
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-            onNextPage={goToNextPage}
-            onPrevPage={goToPrevPage}
-            onFirstPage={goToFirstPage}
-            onLastPage={goToLastPage}
-            getCurrentPageRange={getCurrentPageRange}
           />
         ))}
 

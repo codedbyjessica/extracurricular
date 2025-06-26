@@ -19,15 +19,6 @@ interface DaySectionProps {
   onDateNoteChange?: (activityId: string, dates: string[], notes: Record<string, string>) => void;
   onUpdateActivity?: (activityId: string, updates: Partial<Activity>) => void;
   onDeleteActivity?: (activityId: string) => void;
-  // Global pagination props
-  currentPage: number;
-  totalPages: number;
-  onPageChange: (page: number) => void;
-  onNextPage: () => void;
-  onPrevPage: () => void;
-  onFirstPage: () => void;
-  onLastPage: () => void;
-  getCurrentPageRange: () => string;
 }
 
 export default function DaySection({
@@ -43,15 +34,6 @@ export default function DaySection({
   onDateNoteChange,
   onUpdateActivity,
   onDeleteActivity,
-  // Global pagination props
-  currentPage,
-  totalPages,
-  onPageChange,
-  onNextPage,
-  onPrevPage,
-  onFirstPage,
-  onLastPage,
-  getCurrentPageRange
 }: DaySectionProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState<{ activityId: string; dateIndex: number } | null>(null);
@@ -337,8 +319,8 @@ export default function DaySection({
           <div className="flex-shrink-0 w-[410px] border-r border-neutral-200">
             <div className="grid grid-cols-4 gap-1 bg-neutral-100 border-b border-neutral-200 font-semibold text-sm">
               <div className="text-neutral-700 p-4 col-span-2">Activity</div>
-              <div className="text-neutral-700 p-4 col-span-1">Time</div>
-              <div className="text-neutral-700 p-4 col-span-1">Status</div>
+              <div className="text-neutral-700 p-4">Time</div>
+              <div className="text-neutral-700 p-4">Status</div>
             </div>
           </div>
 
@@ -376,7 +358,7 @@ export default function DaySection({
         </div>
 
         {/* Activity rows with inline expanded details */}
-        {activities.map((activity, activityIdx) => (
+        {activities.map((activity) => (
           <div key={activity.id}>
             {/* Activity row */}
             <div className="flex border-b border-neutral-200 hover:bg-neutral-50 transition-colors">
@@ -387,14 +369,14 @@ export default function DaySection({
                     className={`font-medium text-neutral-900 flex items-center cursor-pointer h-8 mt-4 px-4 col-span-2 ${activity.unconfirmed ? 'bg-gray-400' : getActivityColor(activity)}`}
                     onClick={() => onToggleActivity(activity.id)}
                   >
-                      <span>
-                        {activity.name}
-                        {activity.attendee && (
-                          <span className="text-xs text-neutral-600 ml-1">
-                            ({activity.attendee})
-                          </span>
-                        )}
-                      </span>
+                    <span>
+                      {activity.name}
+                      {activity.attendee && (
+                        <span className="text-xs text-neutral-600 ml-1">
+                          ({activity.attendee})
+                        </span>
+                      )}
+                    </span>
                     <svg 
                       className={`w-4 h-4 ml-2 transition-transform ${
                         expandedActivities.has(activity.id) ? 'rotate-180' : ''

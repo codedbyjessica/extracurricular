@@ -4,18 +4,9 @@ import { Activity } from '@/types/activity';
 
 interface AttendeeSummaryProps {
   activities: Activity[];
-  currentPageWeeks: { 
-    monday: Date; 
-    tuesday: Date; 
-    wednesday: Date; 
-    thursday: Date; 
-    friday: Date; 
-    saturday: Date; 
-    sunday: Date; 
-  }[];
 }
 
-export default function AttendeeSummary({ activities, currentPageWeeks }: AttendeeSummaryProps) {
+export default function AttendeeSummary({ activities }: AttendeeSummaryProps) {
   console.log(activities);
   // Helper function to get date string in local timezone
   const getDateString = (date: Date) => {
@@ -50,22 +41,6 @@ export default function AttendeeSummary({ activities, currentPageWeeks }: Attend
     groups[attendee].push(activity);
     return groups;
   }, {} as Record<string, Activity[]>);
-
-  // Get current page date range
-  const getCurrentPageRange = () => {
-    if (currentPageWeeks.length === 0) return { start: '', end: '' };
-    
-    const start = currentPageWeeks[0].monday;
-    const end = currentPageWeeks[currentPageWeeks.length - 1].sunday;
-    const formatFull = (date: Date) =>
-      date.toLocaleDateString('en-US', {
-        month: 'short', day: 'numeric', year: 'numeric'
-      });
-    return {
-      start: formatFull(start),
-      end: formatFull(end)
-    };
-  };
 
   // Format time to 12-hour format
   const formatTime12Hour = (time: string): string => {

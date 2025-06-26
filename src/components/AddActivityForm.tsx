@@ -5,28 +5,9 @@ import { Activity } from '@/types/activity';
 
 interface AddActivityFormProps {
   onAddActivity: (activity: Omit<Activity, 'id'>) => void;
-  activities: Activity[];
-  weeks: { 
-    monday: Date; 
-    tuesday: Date; 
-    wednesday: Date; 
-    thursday: Date; 
-    friday: Date; 
-    saturday: Date; 
-    sunday: Date; 
-  }[];
-  currentPageWeeks: { 
-    monday: Date; 
-    tuesday: Date; 
-    wednesday: Date; 
-    thursday: Date; 
-    friday: Date; 
-    saturday: Date; 
-    sunday: Date; 
-  }[];
 }
 
-export default function AddActivityForm({ onAddActivity, activities, weeks, currentPageWeeks }: AddActivityFormProps) {
+export default function AddActivityForm({ onAddActivity }: AddActivityFormProps) {
   const [formData, setFormData] = useState({
     name: '',
     attendee: '',

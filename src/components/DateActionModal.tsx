@@ -71,7 +71,7 @@ export default function DateActionModal({
           {isSingleDate && (
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Note about this day's class
+                Note about this day&apos;s class
               </label>
               <textarea
                 value={note}
@@ -86,8 +86,8 @@ export default function DateActionModal({
           {/* Multiple date message */}
           {!isSingleDate && (
             <div className="mb-6 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-              <p className="text-sm text-yellow-800">
-                Are you sure you want to {action} <span className="font-medium">{activityName}</span> on {dateCount} dates?
+              <p className="text-gray-600 mb-4">
+                You&apos;re about to {action === 'add' ? 'add' : 'remove'} {dateCount} date{dateCount === 1 ? '' : 's'} for &quot;{activityName}&quot;.
               </p>
               <p className="text-xs text-yellow-700 mt-1">
                 Notes can only be added for individual date selections.
