@@ -8,14 +8,7 @@ import AddActivityForm from '@/components/AddActivityForm';
 import FreeWeekendsDisplay from '@/components/FreeWeekendsDisplay';
 import AttendeeSummary from '@/components/AttendeeSummary';
 import { activityService } from '@/services/activityService';
-
-// Helper function to get date string in local timezone
-const getDateString = (date: Date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
+import { getDateString, formatTime12Hour } from '@/utils/commonUtils';
 
 // Helper to get all dates from activity dates
 function getAllDatesFromActivities(activities: Activity[]) {
@@ -89,14 +82,6 @@ const activityColors = [
   'bg-violet-100',
   'bg-sky-100'
 ];
-
-// Helper function to convert 24-hour time to 12-hour format
-const formatTime12Hour = (time: string): string => {
-  const [hours, minutes] = time.split(':').map(Number);
-  const period = hours >= 12 ? 'PM' : 'AM';
-  const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
-  return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
-};
 
 export default function Home() {
   // Configuration
@@ -518,10 +503,6 @@ export default function Home() {
         )
       )
       .sort((a, b) => {
-        // Add safety checks for undefined startTime
-        if (!a || !b || !a.startTime || !b.startTime) {
-          return 0; // If either is undefined, don't change order
-        }
         const timeA = a.startTime.replace(':', '');
         const timeB = b.startTime.replace(':', '');
         return parseInt(timeA) - parseInt(timeB);

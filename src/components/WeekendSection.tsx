@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Activity } from '@/types/activity';
 import ActivityDetails from './ActivityDetails';
 import DateActionModal from './DateActionModal';
 import { getConflictingActivities } from '@/utils/dateUtils';
+import { getDateString, formatDate, getMonthColor } from '@/utils/commonUtils';
 
 interface DaySectionProps {
   title: string;
@@ -33,7 +34,7 @@ export default function DaySection({
   onDateSelectionChange,
   onDateNoteChange,
   onUpdateActivity,
-  onDeleteActivity,
+  onDeleteActivity
 }: DaySectionProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState<{ activityId: string; dateIndex: number } | null>(null);
@@ -59,21 +60,6 @@ export default function DaySection({
     dateRange: '',
     currentNote: ''
   });
-
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric'
-    });
-  };
-
-  // Helper function to get date string in local timezone
-  const getDateString = (date: Date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
 
   // Helper function to get activity status
   const getActivityStatus = (activity: Activity) => {
@@ -198,7 +184,7 @@ export default function DaySection({
     }
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = useCallback(() => {
     if (isDragging && dragStart && dragEnd && dragMode && onDateSelectionChange) {
       const activity = activities.find(a => a.id === dragStart.activityId);
       if (!activity) return;
@@ -242,7 +228,7 @@ export default function DaySection({
     setDragStart(null);
     setDragEnd(null);
     setDragMode(null);
-  };
+  }, [isDragging, dragStart, dragEnd, dragMode, onDateSelectionChange, activities, dates]);
 
   // Add global mouse up listener
   useEffect(() => {
@@ -256,7 +242,7 @@ export default function DaySection({
     return () => {
       document.removeEventListener('mouseup', handleGlobalMouseUp);
     };
-  }, [isDragging, dragStart, dragEnd, dragMode]);
+  }, [isDragging, dragStart, dragEnd, dragMode, handleMouseUp]);
 
   const handleModalConfirm = (action: 'add' | 'remove' | 'note', note?: string) => {
     // Create notes object if note is provided
@@ -319,8 +305,8 @@ export default function DaySection({
           <div className="flex-shrink-0 w-[410px] border-r border-neutral-200">
             <div className="grid grid-cols-4 gap-1 bg-neutral-100 border-b border-neutral-200 font-semibold text-sm">
               <div className="text-neutral-700 p-4 col-span-2">Activity</div>
-              <div className="text-neutral-700 p-4">Time</div>
-              <div className="text-neutral-700 p-4">Status</div>
+              <div className="text-neutral-700 p-4 col-span-1">Time</div>
+              <div className="text-neutral-700 p-4 col-span-1">Status</div>
             </div>
           </div>
 
@@ -329,24 +315,6 @@ export default function DaySection({
             <div className="grid gap-1 bg-neutral-100 border-b border-neutral-200 font-semibold text-sm" style={{ gridTemplateColumns: `repeat(${dates.length}, 1fr)` }}>
               {dates.map((date, idx) => {
                 const month = date.getMonth();
-                // Different background colors for each month
-                const getMonthColor = (month: number) => {
-                  switch (month) {
-                    case 0: return 'bg-red-100'; // January
-                    case 1: return 'bg-orange-100'; // February
-                    case 2: return 'bg-yellow-100'; // March
-                    case 3: return 'bg-green-100'; // April
-                    case 4: return 'bg-blue-100'; // May
-                    case 5: return 'bg-purple-100'; // June
-                    case 6: return 'bg-red-100'; // July
-                    case 7: return 'bg-orange-100'; // August
-                    case 8: return 'bg-yellow-100'; // September
-                    case 9: return 'bg-green-100'; // October
-                    case 10: return 'bg-blue-100'; // November
-                    case 11: return 'bg-purple-100'; // December
-                    default: return 'bg-neutral-100';
-                  }
-                };
                 return (
                   <div key={idx} className={`p-4 text-center ${getMonthColor(month)} rounded flex flex-col items-center justify-center`}>
                       {date.toLocaleDateString('en-US')}
@@ -369,14 +337,14 @@ export default function DaySection({
                     className={`font-medium text-neutral-900 flex items-center cursor-pointer h-8 mt-4 px-4 col-span-2 ${activity.unconfirmed ? 'bg-gray-400' : getActivityColor(activity)}`}
                     onClick={() => onToggleActivity(activity.id)}
                   >
-                    <span>
-                      {activity.name}
-                      {activity.attendee && (
-                        <span className="text-xs text-neutral-600 ml-1">
-                          ({activity.attendee})
-                        </span>
-                      )}
-                    </span>
+                      <span>
+                        {activity.name}
+                        {activity.attendee && (
+                          <span className="text-xs text-neutral-600 ml-1">
+                            ({activity.attendee})
+                          </span>
+                        )}
+                      </span>
                     <svg 
                       className={`w-4 h-4 ml-2 transition-transform ${
                         expandedActivities.has(activity.id) ? 'rotate-180' : ''

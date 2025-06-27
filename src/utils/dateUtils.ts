@@ -50,12 +50,8 @@ export function minutesToTime(minutes: number): string {
   return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
 }
 
-export function hasTimeConflict(activity1: Activity, activity2: Activity): boolean {
-  if (activity1.dates.length === 0 || activity2.dates.length === 0) return false;
-  
-  // Check if activities have overlapping dates
-  const commonDates = activity1.dates.filter(date => activity2.dates.includes(date));
-  if (commonDates.length === 0) return false;
+export function hasTimeConflict(activity1: { day: string; startTime: string; endTime: string }, activity2: { day: string; startTime: string; endTime: string }): boolean {
+  if (activity1.day !== activity2.day) return false;
   
   const start1 = timeToMinutes(activity1.startTime);
   const end1 = timeToMinutes(activity1.endTime);
@@ -79,54 +75,21 @@ export function hasTimeConflictOnDate(activity1: Activity, activity2: Activity, 
   return (start1 < end2 && end1 > start2);
 }
 
-function doTimeSlotsOverlap(timeSlot1: string, timeSlot2: string): boolean {
-  const [start1, end1] = timeSlot1.split('-');
-  const [start2, end2] = timeSlot2.split('-');
-  
-  // Convert times to minutes for easier comparison
-  const start1Minutes = timeToMinutes(start1);
-  const end1Minutes = timeToMinutes(end1);
-  const start2Minutes = timeToMinutes(start2);
-  const end2Minutes = timeToMinutes(end2);
-  
-  // Check if time slots overlap
-  return start1Minutes < end2Minutes && start2Minutes < end1Minutes;
-}
-
 export function getConflictingActivities(activities: Activity[], date: string): Activity[] {
-  const activitiesOnDate = activities.filter(activity => 
-    activity.dates.includes(date)
-  );
-
-  if (activitiesOnDate.length <= 1) {
-    return [];
-  }
-
-  // Group activities by time slots and find conflicts
-  const timeSlots = new Map<string, Activity[]>();
+  const conflictingActivities: Activity[] = [];
   
-  activitiesOnDate.forEach(activity => {
-    const timeKey = `${activity.startTime}-${activity.endTime}`;
-    if (!timeSlots.has(timeKey)) {
-      timeSlots.set(timeKey, []);
-    }
-    timeSlots.get(timeKey)!.push(activity);
-  });
-
-  // Find overlapping time slots
-  const conflicts: Activity[] = [];
-  const timeSlotArray = Array.from(timeSlots.entries());
-  
-  for (let i = 0; i < timeSlotArray.length; i++) {
-    for (let j = i + 1; j < timeSlotArray.length; j++) {
-      const [timeSlot1, activities1] = timeSlotArray[i];
-      const [timeSlot2, activities2] = timeSlotArray[j];
-      
-      if (doTimeSlotsOverlap(timeSlot1, timeSlot2)) {
-        conflicts.push(...activities1, ...activities2);
+  for (let i = 0; i < activities.length; i++) {
+    for (let j = i + 1; j < activities.length; j++) {
+      if (hasTimeConflictOnDate(activities[i], activities[j], date)) {
+        if (!conflictingActivities.includes(activities[i])) {
+          conflictingActivities.push(activities[i]);
+        }
+        if (!conflictingActivities.includes(activities[j])) {
+          conflictingActivities.push(activities[j]);
+        }
       }
     }
   }
-
-  return conflicts;
+  
+  return conflictingActivities;
 } 

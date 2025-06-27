@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Activity } from '@/types/activity';
+import { formatDateString, formatDateStringWithDay } from '@/utils/commonUtils';
 
 interface ActivityDetailsProps {
   activity: Activity;
@@ -153,27 +154,6 @@ export default function ActivityDetails({ activity, onUpdateActivity, onDeleteAc
     );
   };
 
-
-
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
-  };
-
-  const formatDateWithDay = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
-  };
-
   // Get start and end dates
   const getStartAndEndDates = () => {
     if (activity.dates.length === 0) return { startDate: null, endDate: null };
@@ -249,7 +229,7 @@ export default function ActivityDetails({ activity, onUpdateActivity, onDeleteAc
             </svg>
             <div>
               <SectionTitles title="Start Date" />
-              {startDate ? formatDateWithDay(startDate) : 'No dates scheduled'}
+              {startDate ? formatDateStringWithDay(startDate) : 'No dates scheduled'}
             </div>
           </div>
 
@@ -259,7 +239,7 @@ export default function ActivityDetails({ activity, onUpdateActivity, onDeleteAc
             </svg>
             <div>
               <SectionTitles title="End Date" />
-              {endDate ? formatDateWithDay(endDate) : 'No dates scheduled'}
+              {endDate ? formatDateStringWithDay(endDate) : 'No dates scheduled'}
             </div>
           </div>
 
@@ -331,9 +311,6 @@ export default function ActivityDetails({ activity, onUpdateActivity, onDeleteAc
           </div>
         ) : (
           <SectionBox>
-            <div className="text-sm text-gray-600 mb-2">
-              General notes about this activity (optional)
-            </div>
             <div className="italic">{activity.notes || 'No general notes'}</div>
           </SectionBox>
         )}
@@ -344,7 +321,7 @@ export default function ActivityDetails({ activity, onUpdateActivity, onDeleteAc
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
             {sortedDates.map((date) => (
               <div key={date}>
-                {formatDateWithDay(date)}
+                {formatDateStringWithDay(date)}
               </div>
             ))}
           </div>
@@ -356,7 +333,7 @@ export default function ActivityDetails({ activity, onUpdateActivity, onDeleteAc
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
               {gaps.map((date) => (
                 <div key={date} className="text-yellow-700">
-                  {formatDateWithDay(date)}
+                  {formatDateStringWithDay(date)}
                 </div>
               ))}
             </div>
@@ -369,7 +346,7 @@ export default function ActivityDetails({ activity, onUpdateActivity, onDeleteAc
           <div className="space-y-3">
             {Object.entries(activity.notesDates).map(([date, note]) => (
               <div key={date}>
-                  {formatDate(date)}: <span className="italic">
+                  {formatDateString(date)}: <span className="italic">
                   {note}
                 </span>
               </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { Activity } from '@/types/activity';
+import { formatDateWithYear, getDateString } from '@/utils/commonUtils';
 
 interface FreeWeekendsDisplayProps {
   activities: Activity[];
@@ -16,22 +17,6 @@ interface FreeWeekendsDisplayProps {
 }
 
 export default function FreeWeekendsDisplay({ activities, currentPageWeeks }: FreeWeekendsDisplayProps) {
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
-  };
-
-  // Helper function to get date string in local timezone
-  const getDateString = (date: Date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
   // Detect free weekends for the current page range
   const getFreeWeekends = () => {
     const freeDays: { day: string; date: string }[] = [];
@@ -59,19 +44,19 @@ export default function FreeWeekendsDisplay({ activities, currentPageWeeks }: Fr
       
       // If Saturday has no confirmed activities AND no unconfirmed activities, add it to free days
       if (saturdayActivities.length === 0 && saturdayUnconfirmed.length === 0) {
-        freeDays.push({ day: 'Sat', date: formatDate(week.saturday) });
+        freeDays.push({ day: 'Sat', date: formatDateWithYear(week.saturday) });
       }
       
       // If Sunday has no confirmed activities AND no unconfirmed activities, add it to free days
       if (sundayActivities.length === 0 && sundayUnconfirmed.length === 0) {
-        freeDays.push({ day: 'Sun', date: formatDate(week.sunday) });
+        freeDays.push({ day: 'Sun', date: formatDateWithYear(week.sunday) });
       }
       
       // Add unconfirmed activities to separate list
       saturdayUnconfirmed.forEach(activity => {
         unconfirmedDays.push({ 
           day: 'Sat', 
-          date: formatDate(week.saturday), 
+          date: formatDateWithYear(week.saturday), 
           activityName: activity.name 
         });
       });
@@ -79,7 +64,7 @@ export default function FreeWeekendsDisplay({ activities, currentPageWeeks }: Fr
       sundayUnconfirmed.forEach(activity => {
         unconfirmedDays.push({ 
           day: 'Sun', 
-          date: formatDate(week.sunday), 
+          date: formatDateWithYear(week.sunday), 
           activityName: activity.name 
         });
       });

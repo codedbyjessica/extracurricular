@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Activity } from '@/types/activity';
+import { formatDate } from '@/utils/commonUtils';
 
 interface AddActivityFormProps {
   onAddActivity: (activity: Omit<Activity, 'id'>) => void;
@@ -98,14 +99,6 @@ export default function AddActivityForm({ onAddActivity }: AddActivityFormProps)
     }
     
     return dates;
-  };
-
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
   };
 
   const isEndDateValid = !formData.endDate || new Date(formData.endDate) >= new Date(formData.startDate);

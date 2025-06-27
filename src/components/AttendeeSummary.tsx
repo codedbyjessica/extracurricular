@@ -1,6 +1,7 @@
 'use client';
 
 import { Activity } from '@/types/activity';
+import { getDateString, formatTime12Hour, getDayOfWeek, getDayOfWeekIndex } from '@/utils/commonUtils';
 
 interface AttendeeSummaryProps {
   activities: Activity[];
@@ -8,14 +9,6 @@ interface AttendeeSummaryProps {
 
 export default function AttendeeSummary({ activities }: AttendeeSummaryProps) {
   console.log(activities);
-  // Helper function to get date string in local timezone
-  const getDateString = (date: Date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
   // Get current date for comparison
   const today = new Date();
   const todayString = getDateString(today);
@@ -42,43 +35,12 @@ export default function AttendeeSummary({ activities }: AttendeeSummaryProps) {
     return groups;
   }, {} as Record<string, Activity[]>);
 
-  // Format time to 12-hour format
-  const formatTime12Hour = (time: string): string => {
-    const [hours, minutes] = time.split(':').map(Number);
-    const period = hours >= 12 ? 'PM' : 'AM';
-    const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
-    return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
-  };
-
-  // Get day of week for an activity
-  const getDayOfWeek = (activity: Activity): string => {
-    if (activity.dates.length === 0) return 'No dates';
-    
-    // Parse the date string properly in local timezone
-    const [year, month, day] = activity.dates[0].split('-').map(Number);
-    const firstDate = new Date(year, month - 1, day); // month is 0-indexed, creates date in local timezone
-    return firstDate.toLocaleDateString('en-US', { weekday: 'long' });
-  };
-
-  // Get day of week index for sorting (0 = Monday, 1 = Tuesday, etc.)
-  const getDayOfWeekIndex = (activity: Activity): number => {
-    if (activity.dates.length === 0) return 7; // Put activities with no dates at the end
-    
-    // Parse the date string properly in local timezone
-    const [year, month, day] = activity.dates[0].split('-').map(Number);
-    const firstDate = new Date(year, month - 1, day); // month is 0-indexed, creates date in local timezone
-    const dayOfWeek = firstDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
-    
-    // Convert to Monday-first (0 = Monday, 1 = Tuesday, ..., 6 = Sunday)
-    return dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-  };
-
   // Sort activities by day of week and then by time
   const sortActivities = (activities: Activity[]): Activity[] => {
     return activities.sort((a, b) => {
       // First sort by day of week
-      const dayA = getDayOfWeekIndex(a);
-      const dayB = getDayOfWeekIndex(b);
+      const dayA = getDayOfWeekIndex(a.dates[0] || '');
+      const dayB = getDayOfWeekIndex(b.dates[0] || '');
       
       if (dayA !== dayB) {
         return dayA - dayB;
@@ -115,7 +77,7 @@ export default function AttendeeSummary({ activities }: AttendeeSummaryProps) {
                       <span className="font-bold text-gray-700">{activity.name}</span> {activity.unconfirmed && <span className="text-xs">(unconfirmed)</span>}
                       <br />
                       <span className="text-gray-500 ml-2">
-                        {getDayOfWeek(activity)} • {formatTime12Hour(activity.startTime)} - {formatTime12Hour(activity.endTime)}
+                        {getDayOfWeek(activity.dates[0] || '')} • {formatTime12Hour(activity.startTime)} - {formatTime12Hour(activity.endTime)}
                       </span> 
                     </div>
                   </div>

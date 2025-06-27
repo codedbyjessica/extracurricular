@@ -87,7 +87,7 @@ export default function DateActionModal({
           {!isSingleDate && (
             <div className="mb-6 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
               <p className="text-gray-600 mb-4">
-                You&apos;re about to {action === 'add' ? 'add' : 'remove'} {dateCount} date{dateCount === 1 ? '' : 's'} for &quot;{activityName}&quot;.
+                This will {action === 'add' ? 'add' : 'remove'} the activity &apos;{activityName}&apos; on {dateCount} date{dateCount === 1 ? '' : 's'}.
               </p>
               <p className="text-xs text-yellow-700 mt-1">
                 Notes can only be added for individual date selections.
