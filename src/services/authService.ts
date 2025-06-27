@@ -53,7 +53,7 @@ export const authService = {
       }
 
       return { user: authData.user, error: null };
-    } catch (error) {
+    } catch {
       return { 
         user: null, 
         error: { message: 'An unexpected error occurred during sign up' } 
@@ -74,7 +74,7 @@ export const authService = {
       }
 
       return { user: authData.user, error: null };
-    } catch (error) {
+    } catch {
       return { 
         user: null, 
         error: { message: 'An unexpected error occurred during sign in' } 
@@ -92,7 +92,7 @@ export const authService = {
       }
 
       return { error: null };
-    } catch (error) {
+    } catch {
       return { 
         error: { message: 'An unexpected error occurred during sign out' } 
       };
@@ -111,7 +111,7 @@ export const authService = {
       }
 
       return { error: null };
-    } catch (error) {
+    } catch {
       return { 
         error: { message: 'An unexpected error occurred while sending reset email' } 
       };
@@ -130,7 +130,7 @@ export const authService = {
       }
 
       return { error: null };
-    } catch (error) {
+    } catch {
       return { 
         error: { message: 'An unexpected error occurred while updating password' } 
       };
@@ -165,7 +165,7 @@ export const authService = {
       }
 
       return { error: null };
-    } catch (error) {
+    } catch {
       return { 
         error: { message: 'An unexpected error occurred while deleting account' } 
       };
@@ -173,7 +173,7 @@ export const authService = {
   },
 
   // Get user profile
-  async getUserProfile(): Promise<{ profile: any; error: AuthError | null }> {
+  async getUserProfile(): Promise<{ profile: Record<string, unknown> | null; error: AuthError | null }> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
@@ -182,7 +182,7 @@ export const authService = {
       }
 
       return { profile: user.user_metadata, error: null };
-    } catch (error) {
+    } catch {
       return { 
         profile: null, 
         error: { message: 'An unexpected error occurred while fetching profile' } 
@@ -208,7 +208,7 @@ export const authService = {
       }
 
       return { error: null };
-    } catch (error) {
+    } catch {
       return { 
         error: { message: 'An unexpected error occurred while updating profile' } 
       };
