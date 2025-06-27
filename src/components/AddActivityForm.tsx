@@ -3,12 +3,14 @@
 import { useState } from 'react';
 import { Activity } from '@/types/activity';
 import { formatDate } from '@/utils/commonUtils';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface AddActivityFormProps {
   onAddActivity: (activity: Omit<Activity, 'id'>) => void;
 }
 
 export default function AddActivityForm({ onAddActivity }: AddActivityFormProps) {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     attendee: '',
@@ -31,7 +33,9 @@ export default function AddActivityForm({ onAddActivity }: AddActivityFormProps)
     const dates = generateWeeklyDates(formData.startDate, formData.endDate);
     
     // Create new activity
+    if (!user) return; // Don't submit if not logged in
     const newActivity: Omit<Activity, 'id'> = {
+      user_id: user.id,
       name: formData.name,
       attendee: formData.attendee,
       dates: dates,

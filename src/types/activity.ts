@@ -1,5 +1,6 @@
 export interface Activity {
   id: string;
+  user_id: string; // Supabase UID of the user
   name: string;
   attendee: string; // Person this activity is for
   dates: string[]; // ISO date strings for scheduled days

@@ -6,9 +6,12 @@ import DaySection from '@/components/WeekendSection';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import AddActivityForm from '@/components/AddActivityForm';
 import FreeWeekendsDisplay from '@/components/FreeWeekendsDisplay';
-import AttendeeSummary from '@/components/AttendeeSummary';
+import AttendeeSummary from '../components/AttendeeSummary';
+import UserProfile from '@/components/auth/UserProfile';
 import { activityService } from '@/services/activityService';
 import { getDateString, formatTime12Hour } from '@/utils/commonUtils';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 
 // Helper to get all dates from activity dates
 function getAllDatesFromActivities(activities: Activity[]) {
@@ -105,12 +108,41 @@ export default function Home() {
   const [currentPage, setCurrentPage] = useState(0);
   const [selectedDate, setSelectedDate] = useState(''); // For date picker
 
+  // Authentication state
+  const { user, loading: authLoading, signOut } = useAuth();
+  const router = useRouter();
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+
+  // Click outside handler for user profile dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (showUserDropdown && !target.closest('.user-dropdown')) {
+        setShowUserDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showUserDropdown]);
+
+  // Redirect unauthenticated users
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/auth');
+    }
+  }, [user, authLoading, router]);
+
   // Load activities from Supabase
   useEffect(() => {
+    if (!user) return;
     const loadActivities = async () => {
       try {
         setLoading(true);
-        const data = await activityService.getActivities();
+        const data = await activityService.getActivities(user.id);
         setActivities(data);
         
         // Generate weeks based on the actual activity dates
@@ -168,7 +200,7 @@ export default function Home() {
     };
 
     loadActivities();
-  }, []);
+  }, [user]);
 
   // Calculate total pages based on weeks (now represents max starting week index)
   const totalPages = Math.max(0, weeks.length - WEEKS_PER_PAGE + 1);
@@ -340,7 +372,8 @@ export default function Home() {
   // Add new activity
   const handleAddActivity = async (newActivity: Omit<Activity, 'id'>) => {
     try {
-      const addedActivity = await activityService.addActivity(newActivity);
+      if (!user) return;
+      const addedActivity = await activityService.addActivity({ ...newActivity, user_id: user.id });
       setActivities(prev => [...prev, addedActivity]);
       
       // Update weeks if the new activity has dates that aren't covered
@@ -469,6 +502,25 @@ export default function Home() {
     }
   };
 
+  // Handle sign out
+  const handleSignOut = async () => {
+    try {
+      const result = await signOut();
+      if (result.error) {
+        console.error('Sign out error:', result.error);
+      }
+      setShowUserDropdown(false);
+    } catch (err) {
+      console.error('Sign out error:', err);
+    }
+  };
+
+  // Handle profile modal open
+  const handleOpenProfile = () => {
+    setShowProfileModal(true);
+    setShowUserDropdown(false);
+  };
+
   // Show error message if there's an error
   if (error) {
     return (
@@ -490,7 +542,7 @@ export default function Home() {
   }
 
   // Don't render until data is loaded
-  if (loading) {
+  if (loading || authLoading) {
     return <LoadingSpinner />;
   }
 
@@ -559,15 +611,80 @@ export default function Home() {
             
             {/* Main content */}
             <div className="relative z-10">
-              <div className="flex items-center justify-center mb-4">
-                <div className="bg-white/20 backdrop-blur-sm rounded-full p-3 mr-4 shadow-lg border border-white/30 hover:bg-white/30 transition-all duration-300 hover:scale-110">
-                  <svg className="w-8 h-8 text-white drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center">
+                  <div className="bg-white/20 backdrop-blur-sm rounded-full p-3 mr-4 shadow-lg border border-white/30 hover:bg-white/30 transition-all duration-300 hover:scale-110">
+                    <svg className="w-8 h-8 text-white drop-shadow-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <h1 className="text-5xl font-bold text-white drop-shadow-lg bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent">
+                    Schedz
+                  </h1>
                 </div>
-                <h1 className="text-5xl font-bold text-white drop-shadow-lg bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent">
-                Schedz
-                </h1>
+
+                {/* Authentication UI */}
+                <div className="flex items-center space-x-4">
+                  {authLoading ? (
+                    <div className="flex items-center text-white/80">
+                      <svg className="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Loading...
+                    </div>
+                  ) : user ? (
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowUserDropdown(!showUserDropdown)}
+                        className="flex items-center space-x-2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 shadow-lg border border-white/30 hover:bg-white/30 transition-all duration-300 text-white"
+                      >
+                        <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-teal-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                          {user.user_metadata?.full_name?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase()}
+                        </div>
+                        <span className="font-medium">
+                          {user.user_metadata?.full_name || user.email}
+                        </span>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+
+                      {/* User Profile Dropdown */}
+                      {showUserDropdown && (
+                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50 user-dropdown">
+                          <div className="py-1">
+                            <button
+                              onClick={handleOpenProfile}
+                              className="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                              </svg>
+                              <span>Your Profile</span>
+                            </button>
+                            <button
+                              onClick={handleSignOut}
+                              className="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                              </svg>
+                              <span>Sign Out</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => router.push('/auth')}
+                      className="bg-white/20 backdrop-blur-sm rounded-full px-6 py-2 shadow-lg border border-white/30 hover:bg-white/30 transition-all duration-300 text-white font-medium"
+                    >
+                      Sign In
+                    </button>
+                  )}
+                </div>
               </div>
               
               <p className="text-xl text-white/90 font-medium drop-shadow-md text-center">
@@ -672,7 +789,7 @@ export default function Home() {
               <div className="mt-4 flex items-center space-x-2 justify-center">
                 <button
                   onClick={goToToday}
-                  className="px-3 py-1 text-sm bg-gradient-to-r from-blue-600 to-teal-500 text-white rounded-md hover:from-blue-700 hover:to-teal-600 transition-all duration-200 shadow-md"
+                  className="px-3 py-1 text-sm bg-gradient-to-r from-blue-400 to-purple-500 text-white rounded-md hover:from-blue-700 hover:to-teal-600 transition-all duration-200 shadow-md"
                 >
                   Today
                 </button>
@@ -750,6 +867,11 @@ export default function Home() {
             Add Empty Weeks (+4 weeks)
           </button>
         </div>
+
+        {/* User Profile Modal */}
+        {showProfileModal && (
+          <UserProfile onClose={() => setShowProfileModal(false)} />
+        )}
       </div>
     </div>
   );
