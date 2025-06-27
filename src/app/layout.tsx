@@ -16,6 +16,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Schedz - Visual Scheduling Made Simple",
   description: "Organize and manage your weekly extracurricular activities with ease",
+  icons: {
+    icon: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({
